@@ -53,5 +53,28 @@ runs:
     - name: Export CPATH to bundled headers
       shell: bash
       run: |
-        # $GITHUB_ACTION_PATH points to this action folder
-        echo "CPATH=${GITHUB_ACTION_PATH}/include:${CPATH:-}" >> "$GITHUB_ENV"
+        set -euxo pipefail
+        # repo root is three levels up from ".github/actions"
+        ROOT="$(cd "${GITHUB_ACTION_PATH}/../../.." && pwd)"
+        HDRS=""
+        [ -d "${ROOT}/include" ] && HDRS="${HDRS}:${ROOT}/include"
+        [ -d "${ROOT}/include/compat" ] && HDRS="${HDRS}:${ROOT}/include/compat"
+        # also cover headers colocated under the action dir, just in case
+        [ -d "${GITHUB_ACTION_PATH}/include" ] && HDRS="${HDRS}:${GITHUB_ACTION_PATH}/include"
+        [ -d "${GITHUB_ACTION_PATH}/compat/include" ] && HDRS="${HDRS}:${GITHUB_ACTION_PATH}/compat/include"
+
+        # prepend without leaving a trailing ":" (which would add ".")
+        JOINED="${HDRS#:}"
+        echo "CPATH=${JOINED}${CPATH:+:$CPATH}" >> "$GITHUB_ENV"
+        echo "C_INCLUDE_PATH=${JOINED}${C_INCLUDE_PATH:+:$C_INCLUDE_PATH}" >> "$GITHUB_ENV"
+
+    - name: Sanity check memory.h
+      shell: bash
+      run: |
+        set -euxo pipefail
+        test -f "${GITHUB_ACTION_PATH}/../../../../include/memory.h" || ls -l "${GITHUB_ACTION_PATH}/../../../../include" || true
+        cat >/tmp/t.c <<'EOF'
+        #include <memory.h>
+        int main(void){return 0;}
+        EOF
+        riscv64-unknown-elf-gcc -c /tmp/t.c
