@@ -31,7 +31,7 @@ runs:
         
         echo 'set man-db/auto-update false' | sudo debconf-communicate
         sudo rm -f /var/lib/man-db/auto-update || true
-        sudo debconf-set man-db/auto-update false
+
         echo 'path-exclude=/usr/share/man/*'       | sudo tee /etc/dpkg/dpkg.cfg.d/01_nodoc >/dev/null
         echo 'path-exclude=/usr/share/groff/*'     | sudo tee -a /etc/dpkg/dpkg.cfg.d/01_nodoc >/dev/null
         echo 'path-exclude=/usr/share/info/*'      | sudo tee -a /etc/dpkg/dpkg.cfg.d/01_nodoc >/dev/null
