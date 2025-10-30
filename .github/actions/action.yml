@@ -1,0 +1,67 @@
+name: "Setup RISC-V toolchain (Ubuntu)"
+description: "Installs gcc-riscv64-unknown-elf, binutils, QEMU and common build deps. Optionally exports CPATH."
+inputs:
+  apt-cache:
+    description: "Enable caching of APT downloads"
+    required: false
+    default: 'true'
+  cache-key-suffix:
+    description: "Bump this to bust cache when package list changes"
+    required: false
+    default: 'v1'
+  packages:
+    description: "Extra space-separated apt packages to install"
+    required: false
+    default: ""
+  headers-path:
+    description: "Relative path to your compat headers (will be added to CPATH if set)"
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Prep APT cache dirs
+      if: inputs.apt-cache == 'true'
+      shell: bash
+      run: |
+        mkdir -p "$HOME/.apt-cache/archives" "$HOME/.apt-cache/lists/partial"
+
+    - name: Cache APT packages
+      if: inputs.apt-cache == 'true'
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.apt-cache/archives
+          ~/.apt-cache/lists
+        key: ${{ runner.os }}-apt-riscv-${{ inputs.cache-key-suffix }}
+        restore-keys: |
+          ${{ runner.os }}-apt-riscv-
+
+    - name: Install toolchain and QEMU
+      shell: bash
+      run: |
+        set -euxo pipefail
+        base_pkgs=(build-essential make python3 ca-certificates \
+                   gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf qemu-system-misc)
+        if [[ -n "${{ inputs.packages }}" ]]; then
+          read -r -a extra <<< "${{ inputs.packages }}"
+          base_pkgs+=("${extra[@]}")
+        fi
+
+        if [[ -d "$HOME/.apt-cache/archives" ]]; then
+          sudo apt-get -o Dir::Cache::archives="$HOME/.apt-cache/archives" \
+                       -o Dir::State::lists="$HOME/.apt-cache/lists" update
+          sudo apt-get -o Dir::Cache::archives="$HOME/.apt-cache/archives" \
+                       -o Dir::State::lists="$HOME/.apt-cache/lists" \
+                       install -y --no-install-recommends "${base_pkgs[@]}"
+        else
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends "${base_pkgs[@]}"
+        fi
+
+    - name: Optionally set CPATH
+      if: inputs.headers-path != ''
+      shell: bash
+      run: |
+        echo "CPATH=${{ github.workspace }}/${{ inputs.headers-path }}:${CPATH:-}" >> "$GITHUB_ENV"
