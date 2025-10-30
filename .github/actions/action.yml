@@ -31,7 +31,11 @@ runs:
         
         echo 'set man-db/auto-update false' | sudo debconf-communicate
         sudo rm -f /var/lib/man-db/auto-update || true
-        
+        sudo debconf-set man-db/auto-update false
+        echo 'path-exclude=/usr/share/man/*'       | sudo tee /etc/dpkg/dpkg.cfg.d/01_nodoc >/dev/null
+        echo 'path-exclude=/usr/share/groff/*'     | sudo tee -a /etc/dpkg/dpkg.cfg.d/01_nodoc >/dev/null
+        echo 'path-exclude=/usr/share/info/*'      | sudo tee -a /etc/dpkg/dpkg.cfg.d/01_nodoc >/dev/null
+
         if [[ -d "$HOME/.apt-cache/archives" ]]; then
           sudo apt-get -o Dir::Cache::archives="$HOME/.apt-cache/archives" \
                        -o Dir::State::lists="$HOME/.apt-cache/lists" update
@@ -54,19 +58,9 @@ runs:
       shell: bash
       run: |
         set -euxo pipefail
-        # repo root is three levels up from ".github/actions"
-        ROOT="$(cd "${GITHUB_ACTION_PATH}/../../.." && pwd)"
-        HDRS=""
-        [ -d "${ROOT}/include" ] && HDRS="${HDRS}:${ROOT}/include"
-        [ -d "${ROOT}/include/compat" ] && HDRS="${HDRS}:${ROOT}/include/compat"
-        # also cover headers colocated under the action dir, just in case
-        [ -d "${GITHUB_ACTION_PATH}/include" ] && HDRS="${HDRS}:${GITHUB_ACTION_PATH}/include"
-        [ -d "${GITHUB_ACTION_PATH}/compat/include" ] && HDRS="${HDRS}:${GITHUB_ACTION_PATH}/compat/include"
-
-        # prepend without leaving a trailing ":" (which would add ".")
-        JOINED="${HDRS#:}"
-        echo "CPATH=${JOINED}${CPATH:+:$CPATH}" >> "$GITHUB_ENV"
-        echo "C_INCLUDE_PATH=${JOINED}${C_INCLUDE_PATH:+:$C_INCLUDE_PATH}" >> "$GITHUB_ENV"
+        # From .github/actions → go up two to the action repo root
+        ROOT="$(cd "${GITHUB_ACTION_PATH}/../.." && pwd)"
+        echo "CPATH=${ROOT}/include${CPATH:+:$CPATH}" >> "$GITHUB_ENV"
 
     - name: Sanity check memory.h
       shell: bash
