@@ -1,33 +1,19 @@
 name: "Setup RISC-V toolchain (Ubuntu)"
-description: "Installs gcc-riscv64-unknown-elf, binutils, QEMU and common build deps. Optionally exports CPATH."
+description: "Installs RISC-V toolchain + exports bundled compat headers."
 inputs:
   apt-cache:
-    description: "Enable caching of APT downloads"
+    description: "Cache APT downloads"
     required: false
     default: 'true'
   cache-key-suffix:
-    description: "Bump this to bust cache when package list changes"
+    description: "Bump to bust APT cache"
     required: false
     default: 'v1'
-  packages:
-    description: "Extra space-separated apt packages to install"
-    required: false
-    default: ""
-  headers-path:
-    description: "Relative path to your compat headers (will be added to CPATH if set)"
-    required: false
-    default: ""
 
 runs:
   using: "composite"
   steps:
-    - name: Prep APT cache dirs
-      if: inputs.apt-cache == 'true'
-      shell: bash
-      run: |
-        mkdir -p "$HOME/.apt-cache/archives" "$HOME/.apt-cache/lists/partial"
-
-    - name: Cache APT packages
+    - name: Prep APT cache
       if: inputs.apt-cache == 'true'
       uses: actions/cache@v4
       with:
@@ -42,26 +28,26 @@ runs:
       shell: bash
       run: |
         set -euxo pipefail
-        base_pkgs=(build-essential make python3 ca-certificates \
-                   gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf qemu-system-misc)
-        if [[ -n "${{ inputs.packages }}" ]]; then
-          read -r -a extra <<< "${{ inputs.packages }}"
-          base_pkgs+=("${extra[@]}")
-        fi
-
         if [[ -d "$HOME/.apt-cache/archives" ]]; then
           sudo apt-get -o Dir::Cache::archives="$HOME/.apt-cache/archives" \
                        -o Dir::State::lists="$HOME/.apt-cache/lists" update
           sudo apt-get -o Dir::Cache::archives="$HOME/.apt-cache/archives" \
                        -o Dir::State::lists="$HOME/.apt-cache/lists" \
-                       install -y --no-install-recommends "${base_pkgs[@]}"
+                       install -y --no-install-recommends \
+                       build-essential make python3 ca-certificates \
+                       gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf \
+                       qemu-system-misc
         else
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends "${base_pkgs[@]}"
+          sudo apt-get install -y --no-install-recommends \
+               build-essential make python3 ca-certificates \
+               gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf \
+               qemu-system-misc
         fi
 
-    - name: Optionally set CPATH
-      if: inputs.headers-path != ''
+    # expose bundled headers without checking out anything in the main repo
+    - name: Export CPATH to bundled headers
       shell: bash
       run: |
-        echo "CPATH=${{ github.workspace }}/${{ inputs.headers-path }}:${CPATH:-}" >> "$GITHUB_ENV"
+        # $GITHUB_ACTION_PATH points to this action folder
+        echo "CPATH=${GITHUB_ACTION_PATH}/compat/include:${CPATH:-}" >> "$GITHUB_ENV"
