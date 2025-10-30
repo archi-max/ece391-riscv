@@ -28,6 +28,10 @@ runs:
       shell: bash
       run: |
         set -euxo pipefail
+        
+        echo 'set man-db/auto-update false' | sudo debconf-communicate
+        sudo rm -f /var/lib/man-db/auto-update || true
+        
         if [[ -d "$HOME/.apt-cache/archives" ]]; then
           sudo apt-get -o Dir::Cache::archives="$HOME/.apt-cache/archives" \
                        -o Dir::State::lists="$HOME/.apt-cache/lists" update
