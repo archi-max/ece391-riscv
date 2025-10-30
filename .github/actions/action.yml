@@ -54,4 +54,4 @@ runs:
       shell: bash
       run: |
         # $GITHUB_ACTION_PATH points to this action folder
-        echo "CPATH=${GITHUB_ACTION_PATH}/compat/include:${CPATH:-}" >> "$GITHUB_ENV"
+        echo "CPATH=${GITHUB_ACTION_PATH}/include:${CPATH:-}" >> "$GITHUB_ENV"
