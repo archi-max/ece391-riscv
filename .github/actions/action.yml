@@ -13,9 +13,17 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Prep APT cache
+    # Ensure cache dirs exist even on first run
+    - name: Prep APT cache dirs
+      shell: bash
+      run: |
+        set -euxo pipefail
+        mkdir -p "$HOME/.apt-cache/archives" "$HOME/.apt-cache/lists"
+
+    # Restore cached APT bits
+    - name: Restore APT cache
       if: inputs.apt-cache == 'true'
-      uses: actions/cache@v4
+      uses: actions/cache/restore@v4
       with:
         path: |
           ~/.apt-cache/archives
@@ -24,51 +32,48 @@ runs:
         restore-keys: |
           ${{ runner.os }}-apt-riscv-
 
+    # Avoid slow man-db updates & shrink docs
+    - name: Speed up apt
+      shell: bash
+      run: |
+        set -euxo pipefail
+        echo 'set man-db/auto-update false' | sudo debconf-communicate
+        sudo rm -f /var/lib/man-db/auto-update || true
+        echo 'path-exclude=/usr/share/man/*'   | sudo tee /etc/dpkg/dpkg.cfg.d/01_nodoc >/dev/null
+        echo 'path-exclude=/usr/share/groff/*' | sudo tee -a /etc/dpkg/dpkg.cfg.d/01_nodoc >/dev/null
+        echo 'path-exclude=/usr/share/info/*'  | sudo tee -a /etc/dpkg/dpkg.cfg.d/01_nodoc >/dev/null
+
     - name: Install toolchain and QEMU
       shell: bash
       run: |
         set -euxo pipefail
-        
-        echo 'set man-db/auto-update false' | sudo debconf-communicate
-        sudo rm -f /var/lib/man-db/auto-update || true
+        sudo apt-get -o Dir::Cache::archives="$HOME/.apt-cache/archives" \
+                     -o Dir::State::lists="$HOME/.apt-cache/lists" update
+        sudo apt-get -o Dir::Cache::archives="$HOME/.apt-cache/archives" \
+                     -o Dir::State::lists="$HOME/.apt-cache/lists" \
+                     install -y --no-install-recommends \
+                     build-essential make python3 ca-certificates \
+                     gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf \
+                     qemu-system-misc
 
-        echo 'path-exclude=/usr/share/man/*'       | sudo tee /etc/dpkg/dpkg.cfg.d/01_nodoc >/dev/null
-        echo 'path-exclude=/usr/share/groff/*'     | sudo tee -a /etc/dpkg/dpkg.cfg.d/01_nodoc >/dev/null
-        echo 'path-exclude=/usr/share/info/*'      | sudo tee -a /etc/dpkg/dpkg.cfg.d/01_nodoc >/dev/null
+    # Save cache early so later job failures don't prevent seeding
+    - name: Save APT cache
+      if: inputs.apt-cache == 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          ~/.apt-cache/archives
+          ~/.apt-cache/lists
+        key: ${{ runner.os }}-apt-riscv-${{ inputs.cache-key-suffix }}
 
-        if [[ -d "$HOME/.apt-cache/archives" ]]; then
-          sudo apt-get -o Dir::Cache::archives="$HOME/.apt-cache/archives" \
-                       -o Dir::State::lists="$HOME/.apt-cache/lists" update
-          sudo apt-get -o Dir::Cache::archives="$HOME/.apt-cache/archives" \
-                       -o Dir::State::lists="$HOME/.apt-cache/lists" \
-                       install -y --no-install-recommends \
-                       build-essential make python3 ca-certificates \
-                       gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf \
-                       qemu-system-misc
-        else
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-               build-essential make python3 ca-certificates \
-               gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf \
-               qemu-system-misc
-        fi
-
-    # expose bundled headers without checking out anything in the main repo
-    - name: Export CPATH to bundled headers
+    # Export bundled headers (repo root has /include)
+    - name: Export CPATH/C_INCLUDE_PATH to bundled headers
       shell: bash
       run: |
         set -euxo pipefail
-        # From .github/actions → go up two to the action repo root
         ROOT="$(cd "${GITHUB_ACTION_PATH}/../.." && pwd)"
-        echo "CPATH=${ROOT}/include${CPATH:+:$CPATH}" >> "$GITHUB_ENV"
-
-    - name: Sanity check memory.h
-      shell: bash
-      run: |
-        set -euxo pipefail
-        test -f "${GITHUB_ACTION_PATH}/../../../../include/memory.h" || ls -l "${GITHUB_ACTION_PATH}/../../../../include" || true
-        cat >/tmp/t.c <<'EOF'
-        #include <memory.h>
-        int main(void){return 0;}
-        EOF
-        riscv64-unknown-elf-gcc -c /tmp/t.c
+        HDRS="${ROOT}/include"
+        # add compat/include if it exists
+        [ -d "${ROOT}/compat/include" ] && HDRS="${HDRS}:${ROOT}/compat/include"
+        echo "CPATH=${HDRS}${CPATH:+:$CPATH}" >> "$GITHUB_ENV"
+        echo "C_INCLUDE_PATH=${HDRS}${C_INCLUDE_PATH:+:$C_INCLUDE_PATH}" >> "$GITHUB_ENV"
