@@ -174,7 +174,7 @@ enum {
 #define RTM_GETLINKPROP	RTM_GETLINKPROP
 
 	RTM_NEWVLAN = 112,
-#define RTM_NEWNVLAN	RTM_NEWVLAN
+#define RTM_NEWVLAN	RTM_NEWVLAN
 	RTM_DELVLAN,
 #define RTM_DELVLAN	RTM_DELVLAN
 	RTM_GETVLAN,
@@ -440,7 +440,7 @@ struct rtnexthop {
 /* RTA_VIA */
 struct rtvia {
 	__kernel_sa_family_t	rtvia_family;
-	__u8			rtvia_addr[];
+	__u8			rtvia_addr[0];
 };
 
 /* RTM_CACHEINFO */
@@ -505,7 +505,7 @@ enum {
 #define RTAX_FEATURE_ECN		(1 << 0)
 #define RTAX_FEATURE_SACK		(1 << 1) /* unused */
 #define RTAX_FEATURE_TIMESTAMP		(1 << 2) /* unused */
-#define RTAX_FEATURE_ALLFRAG		(1 << 3) /* unused */
+#define RTAX_FEATURE_ALLFRAG		(1 << 3)
 #define RTAX_FEATURE_TCP_USEC_TS	(1 << 4)
 
 #define RTAX_FEATURE_MASK	(RTAX_FEATURE_ECN |		\
@@ -766,8 +766,7 @@ enum rtnetlink_groups {
 #define RTNLGRP_NEXTHOP		RTNLGRP_NEXTHOP
 	RTNLGRP_BRVLAN,
 #define RTNLGRP_BRVLAN		RTNLGRP_BRVLAN
-	RTNLGRP_MCTP_IFADDR,
-#define RTNLGRP_MCTP_IFADDR	RTNLGRP_MCTP_IFADDR
+	__RH_RESERVED_RTNLGRP_MCTP_IFADDR,
 	RTNLGRP_TUNNEL,
 #define RTNLGRP_TUNNEL		RTNLGRP_TUNNEL
 	RTNLGRP_STATS,

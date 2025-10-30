@@ -162,7 +162,6 @@ struct in_addr {
 #define MCAST_MSFILTER			48
 #define IP_MULTICAST_ALL		49
 #define IP_UNICAST_IF			50
-#define IP_LOCAL_PORT_RANGE		51
 #define IP_PROTOCOL			52
 
 #define MCAST_EXCLUDE	0
@@ -197,10 +196,7 @@ struct ip_msfilter {
 	__be32		imsf_interface;
 	__u32		imsf_fmode;
 	__u32		imsf_numsrc;
-	union {
-		__be32		imsf_slist[1];
-		__DECLARE_FLEX_ARRAY(__be32, imsf_slist_flex);
-	};
+	__be32		imsf_slist[1];
 };
 
 #define IP_MSFILTER_SIZE(numsrc) \
@@ -219,22 +215,11 @@ struct group_source_req {
 };
 
 struct group_filter {
-	union {
-		struct {
-			__u32				 gf_interface_aux; /* interface index */
-			struct __kernel_sockaddr_storage gf_group_aux;	   /* multicast address */
-			__u32				 gf_fmode_aux;	   /* filter mode */
-			__u32				 gf_numsrc_aux;	   /* number of sources */
-			struct __kernel_sockaddr_storage gf_slist[1];	   /* interface index */
-		};
-		struct {
-			__u32				 gf_interface;	  /* interface index */
-			struct __kernel_sockaddr_storage gf_group;	  /* multicast address */
-			__u32				 gf_fmode;	  /* filter mode */
-			__u32				 gf_numsrc;	  /* number of sources */
-			struct __kernel_sockaddr_storage gf_slist_flex[]; /* interface index */
-		};
-	};
+	__u32				 gf_interface;	/* interface index */
+	struct __kernel_sockaddr_storage gf_group;	/* multicast address */
+	__u32				 gf_fmode;	/* filter mode */
+	__u32				 gf_numsrc;	/* number of sources */
+	struct __kernel_sockaddr_storage gf_slist[1];	/* interface index */
 };
 
 #define GROUP_FILTER_SIZE(numsrc) \

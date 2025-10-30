@@ -763,6 +763,8 @@ struct usb_otg20_descriptor {
 #define USB_OTG_SRP		(1 << 0)
 #define USB_OTG_HNP		(1 << 1)	/* swap host/device roles */
 #define USB_OTG_ADP		(1 << 2)	/* support ADP */
+/* OTG 3.0 */
+#define USB_OTG_RSP		(1 << 3)	/* support RSP */
 
 #define OTG_STS_SELECTOR	0xF000		/* OTG status selector */
 /*-------------------------------------------------------------------------*/
@@ -818,7 +820,7 @@ struct usb_key_descriptor {
 
 	__u8  tTKID[3];
 	__u8  bReserved;
-	__u8  bKeyData[];
+	__u8  bKeyData[0];
 } __attribute__((packed));
 
 /*-------------------------------------------------------------------------*/

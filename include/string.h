@@ -1,4 +1,4 @@
-/* Copyright (C) 1991-2024 Free Software Foundation, Inc.
+/* Copyright (C) 1991-2021 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
@@ -62,22 +62,6 @@ extern void *memset (void *__s, int __c, size_t __n) __THROW __nonnull ((1));
 
 /* Compare N bytes of S1 and S2.  */
 extern int memcmp (const void *__s1, const void *__s2, size_t __n)
-     __THROW __attribute_pure__ __nonnull ((1, 2));
-
-/* Compare N bytes of S1 and S2.  Return zero if S1 and S2 are equal.
-   Return some non-zero value otherwise.
-
-   Essentially __memcmpeq has the exact same semantics as memcmp
-   except the return value is less constrained.  memcmp is always a
-   correct implementation of __memcmpeq.  As well !!memcmp, -memcmp,
-   or bcmp are correct implementations.
-
-   __memcmpeq is meant to be used by compilers when memcmp return is
-   only used for its boolean value.
-
-   __memcmpeq is declared only for use by compilers.  Programs should
-   continue to use memcmp.  */
-extern int __memcmpeq (const void *__s1, const void *__s2, size_t __n)
      __THROW __attribute_pure__ __nonnull ((1, 2));
 
 /* Search N bytes of S for C.  */
@@ -274,7 +258,7 @@ extern char *strrchr (const char *__s, int __c)
      __THROW __attribute_pure__ __nonnull ((1));
 #endif
 
-#ifdef __USE_MISC
+#ifdef __USE_GNU
 /* This function is similar to `strchr'.  But it returns a pointer to
    the closing NUL byte in case C is not found in S.  */
 # ifdef __CORRECT_ISO_CPP_STRING_H_PROTO
@@ -368,7 +352,7 @@ extern char *strtok_r (char *__restrict __s, const char *__restrict __delim,
      __THROW __nonnull ((2, 3));
 #endif
 
-#ifdef __USE_MISC
+#ifdef __USE_GNU
 /* Similar to `strstr' but this function ignores the case of both strings.  */
 # ifdef __CORRECT_ISO_CPP_STRING_H_PROTO
 extern "C++" char *strcasestr (char *__haystack, const char *__needle)
@@ -382,7 +366,7 @@ extern char *strcasestr (const char *__haystack, const char *__needle)
 # endif
 #endif
 
-#ifdef __USE_MISC
+#ifdef __USE_GNU
 /* Find the first occurrence of NEEDLE in HAYSTACK.
    NEEDLE is NEEDLELEN bytes long;
    HAYSTACK is HAYSTACKLEN bytes long.  */
@@ -501,19 +485,6 @@ extern char *stpncpy (char *__restrict __dest,
      __THROW __nonnull ((1, 2));
 #endif
 
-#ifdef __USE_MISC
-/* Copy at most N - 1 characters from SRC to DEST.  */
-extern size_t strlcpy (char *__restrict __dest,
-		       const char *__restrict __src, size_t __n)
-  __THROW __nonnull ((1, 2)) __attr_access ((__write_only__, 1, 3));
-
-/* Append SRC to DEST, possibly with truncation to keep the total size
-   below N.  */
-extern size_t strlcat (char *__restrict __dest,
-		       const char *__restrict __src, size_t __n)
-  __THROW __nonnull ((1, 2))  __attr_access ((__read_write__, 1, 3));
-#endif
-
 #ifdef	__USE_GNU
 /* Compare S1 and S2 as strings holding name & indices/version numbers.  */
 extern int strverscmp (const char *__s1, const char *__s2)
@@ -524,7 +495,7 @@ extern char *strfry (char *__string) __THROW __nonnull ((1));
 
 /* Frobnicate N bytes of S.  */
 extern void *memfrob (void *__s, size_t __n) __THROW __nonnull ((1))
-    __attr_access ((__read_write__, 1, 2));
+    __attr_access ((__write_only__, 1, 2));
 
 # ifndef basename
 /* Return the file name within directory of FILENAME.  We don't

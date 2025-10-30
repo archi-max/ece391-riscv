@@ -11,19 +11,14 @@
 /**
  * DOC: UAPI
  *
- * Not all of the commands that the driver supports are available for use by
- * userspace at all times.  Userspace can check the result of the QUERY command
- * to determine the live set of commands.  Alternatively, it can issue the
- * command and check for failure.
+ * Not all of all commands that the driver supports are always available for use
+ * by userspace. Userspace must check the results from the QUERY command in
+ * order to determine the live set of commands.
  */
 
 #define CXL_MEM_QUERY_COMMANDS _IOR(0xCE, 1, struct cxl_mem_query_commands)
 #define CXL_MEM_SEND_COMMAND _IOWR(0xCE, 2, struct cxl_send_command)
 
-/*
- * NOTE: New defines must be added to the end of the list to preserve
- * compatibility because this enum is exported to user space.
- */
 #define CXL_CMDS                                                          \
 	___C(INVALID, "Invalid Command"),                                 \
 	___C(IDENTIFY, "Identify Command"),                               \
@@ -47,6 +42,9 @@
 	___DEPRECATED(SCAN_MEDIA, "Scan Media"),                          \
 	___DEPRECATED(GET_SCAN_MEDIA, "Get Scan Media Results"),          \
 	___C(GET_TIMESTAMP, "Get Timestamp"),                             \
+	___C(GET_LOG_CAPS, "Get Log Capabilities"),			  \
+	___C(CLEAR_LOG, "Clear Log"),					  \
+	___C(GET_SUP_LOG_SUBLIST, "Get Supported Logs Sub-List"),	  \
 	___C(MAX, "invalid / last command")
 
 #define ___C(a, b) CXL_MEM_COMMAND_ID_##a
@@ -59,7 +57,7 @@ enum { CXL_CMDS };
 #define ___DEPRECATED(a, b) { "Deprecated " b }
 static const struct {
 	const char *name;
-} cxl_command_names[] __attribute__((__unused__)) = { CXL_CMDS };
+} cxl_command_names[] = { CXL_CMDS };
 
 /*
  * Here's how this actually breaks out:

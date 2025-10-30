@@ -47,22 +47,6 @@ struct vhost_vring_addr {
 	__u64 log_guest_addr;
 };
 
-struct vhost_worker_state {
-	/*
-	 * For VHOST_NEW_WORKER the kernel will return the new vhost_worker id.
-	 * For VHOST_FREE_WORKER this must be set to the id of the vhost_worker
-	 * to free.
-	 */
-	unsigned int worker_id;
-};
-
-struct vhost_vring_worker {
-	/* vring index */
-	unsigned int index;
-	/* The id of the vhost_worker returned from VHOST_NEW_WORKER */
-	unsigned int worker_id;
-};
-
 /* no alignment requirement */
 struct vhost_iotlb_msg {
 	__u64 iova;
@@ -123,7 +107,7 @@ struct vhost_memory_region {
 struct vhost_memory {
 	__u32 nregions;
 	__u32 padding;
-	struct vhost_memory_region regions[];
+	struct vhost_memory_region regions[0];
 };
 
 /* VHOST_SCSI specific definitions */
@@ -151,7 +135,7 @@ struct vhost_scsi_target {
 struct vhost_vdpa_config {
 	__u32 off;
 	__u32 len;
-	__u8 buf[];
+	__u8 buf[0];
 };
 
 /* vhost vdpa IOVA range

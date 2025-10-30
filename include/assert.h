@@ -1,4 +1,4 @@
-/* Copyright (C) 1991-2024 Free Software Foundation, Inc.
+/* Copyright (C) 1991-2021 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
@@ -61,8 +61,6 @@
 
 #else /* Not NDEBUG.  */
 
-#ifndef _ASSERT_H_DECLS
-#define _ASSERT_H_DECLS
 __BEGIN_DECLS
 
 /* This prints an "Assertion failed" message and aborts.  */
@@ -83,27 +81,15 @@ extern void __assert (const char *__assertion, const char *__file, int __line)
 
 
 __END_DECLS
-#endif /* Not _ASSERT_H_DECLS */
 
 /* When possible, define assert so that it does not add extra
    parentheses around EXPR.  Otherwise, those added parentheses would
    suppress warnings we'd expect to be detected by gcc's -Wparentheses.  */
 # if defined __cplusplus
-#  if defined __has_builtin
-#   if __has_builtin (__builtin_FILE)
-#    define __ASSERT_FILE __builtin_FILE ()
-#    define __ASSERT_LINE __builtin_LINE ()
-#   endif
-#  endif
-#  if !defined __ASSERT_FILE
-#   define __ASSERT_FILE __FILE__
-#   define __ASSERT_LINE __LINE__
-#  endif
 #  define assert(expr)							\
      (static_cast <bool> (expr)						\
       ? void (0)							\
-      : __assert_fail (#expr, __ASSERT_FILE, __ASSERT_LINE,             \
-                       __ASSERT_FUNCTION))
+      : __assert_fail (#expr, __FILE__, __LINE__, __ASSERT_FUNCTION))
 # elif !defined __GNUC__ || defined __STRICT_ANSI__
 #  define assert(expr)							\
     ((expr)								\
@@ -149,11 +135,7 @@ __END_DECLS
 #endif /* NDEBUG.  */
 
 
-#if (defined __USE_ISOC11			\
-     && (!defined __STDC_VERSION__		\
-	 || __STDC_VERSION__ <= 201710L		\
-	 || !__GNUC_PREREQ (13, 0))		\
-     && !defined __cplusplus)
+#if defined __USE_ISOC11 && !defined __cplusplus
 # undef static_assert
 # define static_assert _Static_assert
 #endif
