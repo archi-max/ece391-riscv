@@ -1,50 +1,32 @@
-/* Copyright (C) 1991-2021 Free Software Foundation, Inc.
-   This file is part of the GNU C Library.
-
-   The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Lesser General Public
-   License as published by the Free Software Foundation; either
-   version 2.1 of the License, or (at your option) any later version.
-
-   The GNU C Library is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Lesser General Public License for more details.
-
-   You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, see
-   <https://www.gnu.org/licenses/>.  */
-
-/*
- *	POSIX Standard: 4.5.2 Process Times	<sys/times.h>
- */
-
 #ifndef	_SYS_TIMES_H
-#define	_SYS_TIMES_H	1
+#ifdef __cplusplus
+extern "C" {
+#endif
+#define	_SYS_TIMES_H
 
-#include <features.h>
+#include <_ansi.h>
+#include <sys/_types.h>
 
-#include <bits/types/clock_t.h>
+#if !defined(__clock_t_defined) && !defined(_CLOCK_T_DECLARED)
+typedef	_CLOCK_T_	clock_t;
+#define	__clock_t_defined
+#define	_CLOCK_T_DECLARED
+#endif
 
-__BEGIN_DECLS
+/*  Get Process Times, P1003.1b-1993, p. 92 */
+struct tms {
+	clock_t	tms_utime;		/* user time */
+	clock_t	tms_stime;		/* system time */
+	clock_t	tms_cutime;		/* user time, children */
+	clock_t	tms_cstime;		/* system time, children */
+};
 
-/* Structure describing CPU time used by a process and its children.  */
-struct tms
-  {
-    clock_t tms_utime;		/* User CPU time.  */
-    clock_t tms_stime;		/* System CPU time.  */
+clock_t times (struct tms *);
+#ifdef _LIBC
+clock_t _times (struct tms *);
+#endif
 
-    clock_t tms_cutime;		/* User CPU time of dead children.  */
-    clock_t tms_cstime;		/* System CPU time of dead children.  */
-  };
-
-
-/* Store the CPU time used by this process and all its
-   dead children (and their dead children) in BUFFER.
-   Return the elapsed real time, or (clock_t) -1 for errors.
-   All times are in CLK_TCKths of a second.  */
-extern clock_t times (struct tms *__buffer) __THROW;
-
-__END_DECLS
-
-#endif /* sys/times.h	*/
+#ifdef __cplusplus
+}
+#endif
+#endif	/* !_SYS_TIMES_H */

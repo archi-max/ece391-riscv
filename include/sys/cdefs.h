@@ -1,697 +1,754 @@
-/* Copyright (C) 1992-2021 Free Software Foundation, Inc.
-   This file is part of the GNU C Library.
+/* libc/sys/linux/sys/cdefs.h - Helper macros for K&R vs. ANSI C compat. */
 
-   The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Lesser General Public
-   License as published by the Free Software Foundation; either
-   version 2.1 of the License, or (at your option) any later version.
+/* Written 2000 by Werner Almesberger */
 
-   The GNU C Library is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Lesser General Public License for more details.
+/*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright (c) 1991, 1993
+ *	The Regents of the University of California.  All rights reserved.
+ *
+ * This code is derived from software contributed to Berkeley by
+ * Berkeley Software Design, Inc.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the University nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ *	@(#)cdefs.h	8.8 (Berkeley) 1/9/95
+ * $FreeBSD$
+ */
 
-   You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, see
-   <https://www.gnu.org/licenses/>.  */
+#ifndef	_SYS_CDEFS_H_
+#define	_SYS_CDEFS_H_
 
-#ifndef	_SYS_CDEFS_H
-#define	_SYS_CDEFS_H	1
+#include <machine/_default_types.h>
+#include <sys/features.h>
+#include <stddef.h>
 
-/* We are almost always included from features.h. */
-#ifndef _FEATURES_H
-# include <features.h>
-#endif
-
-/* The GNU libc does not support any K&R compilers or the traditional mode
-   of ISO C compilers anymore.  Check for some of the combinations not
-   supported anymore.  */
-#if defined __GNUC__ && !defined __STDC__
-# error "You need a ISO C conforming compiler to use the glibc headers"
-#endif
-
-/* Some user header file might have defined this before.  */
-#undef	__P
-#undef	__PMT
-
-/* Compilers that lack __has_attribute may object to
-       #if defined __has_attribute && __has_attribute (...)
-   even though they do not need to evaluate the right-hand side of the &&.
-   Similarly for __has_builtin, etc.  */
-#if (defined __has_attribute \
-     && (!defined __clang_minor__ \
-         || 3 < __clang_major__ + (5 <= __clang_minor__)))
-# define __glibc_has_attribute(attr) __has_attribute (attr)
-#else
-# define __glibc_has_attribute(attr) 0
-#endif
-#ifdef __has_builtin
-# define __glibc_has_builtin(name) __has_builtin (name)
-#else
-# define __glibc_has_builtin(name) 0
-#endif
-#ifdef __has_extension
-# define __glibc_has_extension(ext) __has_extension (ext)
-#else
-# define __glibc_has_extension(ext) 0
-#endif
-
-#if defined __GNUC__ || defined __clang__
-
-/* All functions, except those with callbacks or those that
-   synchronize memory, are leaf functions.  */
-# if __GNUC_PREREQ (4, 6) && !defined _LIBC
-#  define __LEAF , __leaf__
-#  define __LEAF_ATTR __attribute__ ((__leaf__))
-# else
-#  define __LEAF
-#  define __LEAF_ATTR
-# endif
-
-/* GCC can always grok prototypes.  For C++ programs we add throw()
-   to help it optimize the function calls.  But this only works with
-   gcc 2.8.x and egcs.  For gcc 3.4 and up we even mark C functions
-   as non-throwing using a function attribute since programs can use
-   the -fexceptions options for C code as well.  */
-# if !defined __cplusplus \
-     && (__GNUC_PREREQ (3, 4) || __glibc_has_attribute (__nothrow__))
-#  define __THROW	__attribute__ ((__nothrow__ __LEAF))
-#  define __THROWNL	__attribute__ ((__nothrow__))
-#  define __NTH(fct)	__attribute__ ((__nothrow__ __LEAF)) fct
-#  define __NTHNL(fct)  __attribute__ ((__nothrow__)) fct
-# else
-#  if defined __cplusplus && (__GNUC_PREREQ (2,8) || __clang_major >= 4)
-#   if __cplusplus >= 201103L
-#    define __THROW	noexcept (true)
-#   else
-#    define __THROW	throw ()
-#   endif
-#   define __THROWNL	__THROW
-#   define __NTH(fct)	__LEAF_ATTR fct __THROW
-#   define __NTHNL(fct) fct __THROW
-#  else
-#   define __THROW
-#   define __THROWNL
-#   define __NTH(fct)	fct
-#   define __NTHNL(fct) fct
-#  endif
-# endif
-
-#else	/* Not GCC or clang.  */
-
-# if (defined __cplusplus						\
-      || (defined __STDC_VERSION__ && __STDC_VERSION__ >= 199901L))
-#  define __inline	inline
-# else
-#  define __inline		/* No inline functions.  */
-# endif
-
-# define __THROW
-# define __THROWNL
-# define __NTH(fct)	fct
-
-#endif	/* GCC || clang.  */
-
-/* These two macros are not used in glibc anymore.  They are kept here
-   only because some other projects expect the macros to be defined.  */
-#define __P(args)	args
 #define __PMT(args)	args
+#define __DOTS    	, ...
+#define __THROW
 
-/* For these things, GCC behaves the ANSI way normally,
-   and the non-ANSI way under -traditional.  */
+#ifdef __GNUC__
+# define __ASMNAME(cname)  __XSTRING (__USER_LABEL_PREFIX__) cname
+#endif
 
-#define __CONCAT(x,y)	x ## y
-#define __STRING(x)	#x
-
-/* This is not a typedef so `const __ptr_t' does the right thing.  */
 #define __ptr_t void *
+#define __long_double_t  long double
 
+#define __attribute_malloc__
+#define __attribute_pure__
+#define __attribute_format_strfmon__(a,b)
+#define __flexarr      [0]
 
-/* C++ needs to know that types and declarations are C, not C++.  */
-#ifdef	__cplusplus
-# define __BEGIN_DECLS	extern "C" {
-# define __END_DECLS	}
-#else
-# define __BEGIN_DECLS
-# define __END_DECLS
+#ifndef __BOUNDED_POINTERS__
+# define __bounded      /* nothing */
+# define __unbounded    /* nothing */
+# define __ptrvalue     /* nothing */
 #endif
-
-
-/* Fortify support.  */
-#define __bos(ptr) __builtin_object_size (ptr, __USE_FORTIFY_LEVEL > 1)
-#define __bos0(ptr) __builtin_object_size (ptr, 0)
-
-/* Use __builtin_dynamic_object_size at _FORTIFY_SOURCE=3 when available.  */
-#if __USE_FORTIFY_LEVEL == 3 && (__glibc_clang_prereq (9, 0)		      \
-				 || __GNUC_PREREQ (12, 0))
-# define __glibc_objsize0(__o) __builtin_dynamic_object_size (__o, 0)
-# define __glibc_objsize(__o) __builtin_dynamic_object_size (__o, 1)
-#else
-# define __glibc_objsize0(__o) __bos0 (__o)
-# define __glibc_objsize(__o) __bos (__o)
-#endif
-
-#if __USE_FORTIFY_LEVEL > 0
-/* Compile time conditions to choose between the regular, _chk and _chk_warn
-   variants.  These conditions should get evaluated to constant and optimized
-   away.  */
-
-#define __glibc_safe_len_cond(__l, __s, __osz) ((__l) <= (__osz) / (__s))
-#define __glibc_unsigned_or_positive(__l) \
-  ((__typeof (__l)) 0 < (__typeof (__l)) -1				      \
-   || (__builtin_constant_p (__l) && (__l) > 0))
-
-/* Length is known to be safe at compile time if the __L * __S <= __OBJSZ
-   condition can be folded to a constant and if it is true, or unknown (-1) */
-#define __glibc_safe_or_unknown_len(__l, __s, __osz) \
-  ((__builtin_constant_p (__osz) && (__osz) == (__SIZE_TYPE__) -1)	      \
-   || (__glibc_unsigned_or_positive (__l)				      \
-       && __builtin_constant_p (__glibc_safe_len_cond ((__SIZE_TYPE__) (__l), \
-						       (__s), (__osz)))	      \
-       && __glibc_safe_len_cond ((__SIZE_TYPE__) (__l), (__s), (__osz))))
-
-/* Conversely, we know at compile time that the length is unsafe if the
-   __L * __S <= __OBJSZ condition can be folded to a constant and if it is
-   false.  */
-#define __glibc_unsafe_len(__l, __s, __osz) \
-  (__glibc_unsigned_or_positive (__l)					      \
-   && __builtin_constant_p (__glibc_safe_len_cond ((__SIZE_TYPE__) (__l),     \
-						   __s, __osz))		      \
-   && !__glibc_safe_len_cond ((__SIZE_TYPE__) (__l), __s, __osz))
-
-/* Fortify function f.  __f_alias, __f_chk and __f_chk_warn must be
-   declared.  */
-
-#define __glibc_fortify(f, __l, __s, __osz, ...) \
-  (__glibc_safe_or_unknown_len (__l, __s, __osz)			      \
-   ? __ ## f ## _alias (__VA_ARGS__)					      \
-   : (__glibc_unsafe_len (__l, __s, __osz)				      \
-      ? __ ## f ## _chk_warn (__VA_ARGS__, __osz)			      \
-      : __ ## f ## _chk (__VA_ARGS__, __osz)))
-
-/* Fortify function f, where object size argument passed to f is the number of
-   elements and not total size.  */
-
-#define __glibc_fortify_n(f, __l, __s, __osz, ...) \
-  (__glibc_safe_or_unknown_len (__l, __s, __osz)			      \
-   ? __ ## f ## _alias (__VA_ARGS__)					      \
-   : (__glibc_unsafe_len (__l, __s, __osz)				      \
-      ? __ ## f ## _chk_warn (__VA_ARGS__, (__osz) / (__s))		      \
-      : __ ## f ## _chk (__VA_ARGS__, (__osz) / (__s))))
-#endif
-
-#if __GNUC_PREREQ (4,3)
-# define __warnattr(msg) __attribute__((__warning__ (msg)))
-# define __errordecl(name, msg) \
-  extern void name (void) __attribute__((__error__ (msg)))
-#else
-# define __warnattr(msg)
-# define __errordecl(name, msg) extern void name (void)
-#endif
-
-/* Support for flexible arrays.
-   Headers that should use flexible arrays only if they're "real"
-   (e.g. only if they won't affect sizeof()) should test
-   #if __glibc_c99_flexarr_available.  */
-#if defined __STDC_VERSION__ && __STDC_VERSION__ >= 199901L && !defined __HP_cc
-# define __flexarr	[]
-# define __glibc_c99_flexarr_available 1
-#elif __GNUC_PREREQ (2,97) || defined __clang__
-/* GCC 2.97 and clang support C99 flexible array members as an extension,
-   even when in C89 mode or compiling C++ (any version).  */
-# define __flexarr	[]
-# define __glibc_c99_flexarr_available 1
-#elif defined __GNUC__
-/* Pre-2.97 GCC did not support C99 flexible arrays but did have
-   an equivalent extension with slightly different notation.  */
-# define __flexarr	[0]
-# define __glibc_c99_flexarr_available 1
-#else
-/* Some other non-C99 compiler.  Approximate with [1].  */
-# define __flexarr	[1]
-# define __glibc_c99_flexarr_available 0
-#endif
-
-
-/* __asm__ ("xyz") is used throughout the headers to rename functions
-   at the assembly language level.  This is wrapped by the __REDIRECT
-   macro, in order to support compilers that can do this some other
-   way.  When compilers don't support asm-names at all, we have to do
-   preprocessor tricks instead (which don't have exactly the right
-   semantics, but it's the best we can do).
-
-   Example:
-   int __REDIRECT(setpgrp, (__pid_t pid, __pid_t pgrp), setpgid); */
-
-#if (defined __GNUC__ && __GNUC__ >= 2) || (__clang_major__ >= 4)
-
-# define __REDIRECT(name, proto, alias) name proto __asm__ (__ASMNAME (#alias))
-# ifdef __cplusplus
-#  define __REDIRECT_NTH(name, proto, alias) \
-     name proto __THROW __asm__ (__ASMNAME (#alias))
-#  define __REDIRECT_NTHNL(name, proto, alias) \
-     name proto __THROWNL __asm__ (__ASMNAME (#alias))
-# else
-#  define __REDIRECT_NTH(name, proto, alias) \
-     name proto __asm__ (__ASMNAME (#alias)) __THROW
-#  define __REDIRECT_NTHNL(name, proto, alias) \
-     name proto __asm__ (__ASMNAME (#alias)) __THROWNL
-# endif
-# define __ASMNAME(cname)  __ASMNAME2 (__USER_LABEL_PREFIX__, cname)
-# define __ASMNAME2(prefix, cname) __STRING (prefix) cname
 
 /*
-#elif __SOME_OTHER_COMPILER__
-
-# define __REDIRECT(name, proto, alias) name proto; \
-	_Pragma("let " #name " = " #alias)
-*/
+ * Testing against Clang-specific extensions.
+ */
+#ifndef	__has_attribute
+#define	__has_attribute(x)	0
+#endif
+#ifndef	__has_extension
+#define	__has_extension		__has_feature
+#endif
+#ifndef	__has_feature
+#define	__has_feature(x)	0
+#endif
+#ifndef	__has_include
+#define	__has_include(x)	0
+#endif
+#ifndef	__has_builtin
+#define	__has_builtin(x)	0
 #endif
 
-/* GCC and clang have various useful declarations that can be made with
-   the '__attribute__' syntax.  All of the ways we use this do fine if
-   they are omitted for compilers that don't understand it.  */
-#if !(defined __GNUC__ || defined __clang__)
-# define __attribute__(xyz)	/* Ignore */
-#endif
-
-/* At some point during the gcc 2.96 development the `malloc' attribute
-   for functions was introduced.  We don't want to use it unconditionally
-   (although this would be possible) since it generates warnings.  */
-#if __GNUC_PREREQ (2,96) || __glibc_has_attribute (__malloc__)
-# define __attribute_malloc__ __attribute__ ((__malloc__))
+#if defined(__cplusplus)
+#define	__BEGIN_DECLS	extern "C" {
+#define	__END_DECLS	}
 #else
-# define __attribute_malloc__ /* Ignore */
+#define	__BEGIN_DECLS
+#define	__END_DECLS
 #endif
 
-/* Tell the compiler which arguments to an allocation function
-   indicate the size of the allocation.  */
-#if __GNUC_PREREQ (4, 3)
-# define __attribute_alloc_size__(params) \
-  __attribute__ ((__alloc_size__ params))
+/*
+ * This code has been put in place to help reduce the addition of
+ * compiler specific defines in FreeBSD code.  It helps to aid in
+ * having a compiler-agnostic source tree.
+ */
+
+#if defined(__GNUC__)
+
+#if __GNUC__ >= 3
+#define	__GNUCLIKE_ASM 3
+#define	__GNUCLIKE_MATH_BUILTIN_CONSTANTS
 #else
-# define __attribute_alloc_size__(params) /* Ignore.  */
+#define	__GNUCLIKE_ASM 2
+#endif
+#define	__GNUCLIKE___TYPEOF 1
+#define	__GNUCLIKE___SECTION 1
+
+#define	__GNUCLIKE_CTOR_SECTION_HANDLING 1
+
+#define	__GNUCLIKE_BUILTIN_CONSTANT_P 1
+
+#if (__GNUC_MINOR__ > 95 || __GNUC__ >= 3)
+#define	__GNUCLIKE_BUILTIN_VARARGS 1
+#define	__GNUCLIKE_BUILTIN_STDARG 1
+#define	__GNUCLIKE_BUILTIN_VAALIST 1
 #endif
 
-/* At some point during the gcc 2.96 development the `pure' attribute
-   for functions was introduced.  We don't want to use it unconditionally
-   (although this would be possible) since it generates warnings.  */
-#if __GNUC_PREREQ (2,96) || __glibc_has_attribute (__pure__)
-# define __attribute_pure__ __attribute__ ((__pure__))
+#define	__GNUC_VA_LIST_COMPATIBILITY 1
+
+/*
+ * Compiler memory barriers, specific to gcc and clang.
+ */
+#define	__compiler_membar()	__asm __volatile(" " : : : "memory")
+
+#define	__GNUCLIKE_BUILTIN_NEXT_ARG 1
+#define	__GNUCLIKE_MATH_BUILTIN_RELOPS
+
+#define	__GNUCLIKE_BUILTIN_MEMCPY 1
+
+/* XXX: if __GNUC__ >= 2: not tested everywhere originally, where replaced */
+#define	__CC_SUPPORTS_INLINE 1
+#define	__CC_SUPPORTS___INLINE 1
+#define	__CC_SUPPORTS___INLINE__ 1
+
+#define	__CC_SUPPORTS___FUNC__ 1
+#define	__CC_SUPPORTS_WARNING 1
+
+#define	__CC_SUPPORTS_VARADIC_XXX 1 /* see varargs.h */
+
+#define	__CC_SUPPORTS_DYNAMIC_ARRAY_INIT 1
+
+#endif /* __GNUC__ */
+
+/*
+ * The __CONCAT macro is used to concatenate parts of symbol names, e.g.
+ * with "#define OLD(foo) __CONCAT(old,foo)", OLD(foo) produces oldfoo.
+ * The __CONCAT macro is a bit tricky to use if it must work in non-ANSI
+ * mode -- there must be no spaces between its arguments, and for nested
+ * __CONCAT's, all the __CONCAT's must be at the left.  __CONCAT can also
+ * concatenate double-quoted strings produced by the __STRING macro, but
+ * this only works with ANSI C.
+ *
+ * __XSTRING is like __STRING, but it expands any macros in its argument
+ * first.  It is only available with ANSI C.
+ */
+#if defined(__STDC__) || defined(__cplusplus)
+#define	__P(protos)	protos		/* full-blown ANSI C */
+#define	__CONCAT1(x,y)	x ## y
+#define	__CONCAT(x,y)	__CONCAT1(x,y)
+#define	__STRING(x)	#x		/* stringify without expanding x */
+#define	__XSTRING(x)	__STRING(x)	/* expand x, then stringify */
+
+#define	__const		const		/* define reserved names to standard */
+#define	__signed	signed
+#define	__volatile	volatile
+#if defined(__cplusplus)
+#define	__inline	inline		/* convert to C++ keyword */
 #else
-# define __attribute_pure__ /* Ignore */
-#endif
+#if !(defined(__CC_SUPPORTS___INLINE))
+#define	__inline			/* delete GCC keyword */
+#endif /* ! __CC_SUPPORTS___INLINE */
+#endif /* !__cplusplus */
 
-/* This declaration tells the compiler that the value is constant.  */
-#if __GNUC_PREREQ (2,5) || __glibc_has_attribute (__const__)
-# define __attribute_const__ __attribute__ ((__const__))
+#else	/* !(__STDC__ || __cplusplus) */
+#define	__P(protos)	()		/* traditional C preprocessor */
+#define	__CONCAT(x,y)	x/**/y
+#define	__STRING(x)	"x"
+
+#if !defined(__CC_SUPPORTS___INLINE)
+#define	__const				/* delete pseudo-ANSI C keywords */
+#define	__inline
+#define	__signed
+#define	__volatile
+/*
+ * In non-ANSI C environments, new programs will want ANSI-only C keywords
+ * deleted from the program and old programs will want them left alone.
+ * When using a compiler other than gcc, programs using the ANSI C keywords
+ * const, inline etc. as normal identifiers should define -DNO_ANSI_KEYWORDS.
+ * When using "gcc -traditional", we assume that this is the intent; if
+ * __GNUC__ is defined but __STDC__ is not, we leave the new keywords alone.
+ */
+#ifndef	NO_ANSI_KEYWORDS
+#define	const				/* delete ANSI C keywords */
+#define	inline
+#define	signed
+#define	volatile
+#endif	/* !NO_ANSI_KEYWORDS */
+#endif	/* !__CC_SUPPORTS___INLINE */
+#endif	/* !(__STDC__ || __cplusplus) */
+
+/*
+ * Compiler-dependent macros to help declare dead (non-returning) and
+ * pure (no side effects) functions, and unused variables.  They are
+ * null except for versions of gcc that are known to support the features
+ * properly (old versions of gcc-2 supported the dead and pure features
+ * in a different (wrong) way).  If we do not provide an implementation
+ * for a given compiler, let the compile fail if it is told to use
+ * a feature that we cannot live without.
+ */
+#define	__weak_symbol	__attribute__((__weak__))
+#if !__GNUC_PREREQ__(2, 5)
+#define	__dead2
+#define	__pure2
+#define	__unused
+#endif
+#if __GNUC__ == 2 && __GNUC_MINOR__ >= 5 && __GNUC_MINOR__ < 7
+#define	__dead2		__attribute__((__noreturn__))
+#define	__pure2		__attribute__((__const__))
+#define	__unused
+/* XXX Find out what to do for __packed, __aligned and __section */
+#endif
+#if __GNUC_PREREQ__(2, 7)
+#define	__dead2		__attribute__((__noreturn__))
+#define	__pure2		__attribute__((__const__))
+#define	__unused	__attribute__((__unused__))
+#define	__used		__attribute__((__used__))
+#define	__packed	__attribute__((__packed__))
+#define	__aligned(x)	__attribute__((__aligned__(x)))
+#define	__section(x)	__attribute__((__section__(x)))
+#endif
+#if __GNUC_PREREQ__(4, 3) || __has_attribute(__alloc_size__)
+#define	__alloc_size(x)	__attribute__((__alloc_size__(x)))
+#define	__alloc_size2(n, x)	__attribute__((__alloc_size__(n, x)))
 #else
-# define __attribute_const__ /* Ignore */
+#define	__alloc_size(x)
+#define	__alloc_size2(n, x)
 #endif
-
-#if __GNUC_PREREQ (2,7) || __glibc_has_attribute (__unused__)
-# define __attribute_maybe_unused__ __attribute__ ((__unused__))
+#if __GNUC_PREREQ__(4, 9) || __has_attribute(__alloc_align__)
+#define	__alloc_align(x)	__attribute__((__alloc_align__(x)))
 #else
-# define __attribute_maybe_unused__ /* Ignore */
+#define	__alloc_align(x)
 #endif
 
-/* At some point during the gcc 3.1 development the `used' attribute
-   for functions was introduced.  We don't want to use it unconditionally
-   (although this would be possible) since it generates warnings.  */
-#if __GNUC_PREREQ (3,1) || __glibc_has_attribute (__used__)
-# define __attribute_used__ __attribute__ ((__used__))
-# define __attribute_noinline__ __attribute__ ((__noinline__))
+#if !__GNUC_PREREQ__(2, 95)
+#define	__alignof(x)	__offsetof(struct { char __a; x __b; }, __b)
+#endif
+
+/*
+ * Keywords added in C11.
+ */
+
+#if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 201112L
+
+#if !__has_extension(c_alignas)
+#if (defined(__cplusplus) && __cplusplus >= 201103L) || \
+    __has_extension(cxx_alignas)
+#define	_Alignas(x)		alignas(x)
 #else
-# define __attribute_used__ __attribute__ ((__unused__))
-# define __attribute_noinline__ /* Ignore */
+/* XXX: Only emulates _Alignas(constant-expression); not _Alignas(type-name). */
+#define	_Alignas(x)		__aligned(x)
+#endif
 #endif
 
-/* Since version 3.2, gcc allows marking deprecated functions.  */
-#if __GNUC_PREREQ (3,2) || __glibc_has_attribute (__deprecated__)
-# define __attribute_deprecated__ __attribute__ ((__deprecated__))
+#if defined(__cplusplus) && __cplusplus >= 201103L
+#define	_Alignof(x)		alignof(x)
 #else
-# define __attribute_deprecated__ /* Ignore */
+#define	_Alignof(x)		__alignof(x)
 #endif
 
-/* Since version 4.5, gcc also allows one to specify the message printed
-   when a deprecated function is used.  clang claims to be gcc 4.2, but
-   may also support this feature.  */
-#if __GNUC_PREREQ (4,5) \
-    || __glibc_has_extension (__attribute_deprecated_with_message__)
-# define __attribute_deprecated_msg__(msg) \
-	 __attribute__ ((__deprecated__ (msg)))
+#if !defined(__cplusplus) && !__has_extension(c_atomic) && \
+	!__has_extension(cxx_atomic) && !__GNUC_PREREQ__(4, 7)
+/*
+ * No native support for _Atomic(). Place object in structure to prevent
+ * most forms of direct non-atomic access.
+ */
+#define	_Atomic(T)		struct { T volatile __val; }
+#endif
+
+#if defined(__cplusplus) && __cplusplus >= 201103L
+#define	_Noreturn		[[noreturn]]
 #else
-# define __attribute_deprecated_msg__(msg) __attribute_deprecated__
+#define	_Noreturn		__dead2
 #endif
 
-/* At some point during the gcc 2.8 development the `format_arg' attribute
-   for functions was introduced.  We don't want to use it unconditionally
-   (although this would be possible) since it generates warnings.
-   If several `format_arg' attributes are given for the same function, in
-   gcc-3.0 and older, all but the last one are ignored.  In newer gccs,
-   all designated arguments are considered.  */
-#if __GNUC_PREREQ (2,8) || __glibc_has_attribute (__format_arg__)
-# define __attribute_format_arg__(x) __attribute__ ((__format_arg__ (x)))
+#if !__has_extension(c_static_assert)
+#if (defined(__cplusplus) && __cplusplus >= 201103L) || \
+    __has_extension(cxx_static_assert)
+#define	_Static_assert(x, y)	static_assert(x, y)
+#elif __GNUC_PREREQ__(4,6) && !defined(__cplusplus)
+/* Nothing, gcc 4.6 and higher has _Static_assert built-in */
+#elif defined(__COUNTER__)
+#define	_Static_assert(x, y)	__Static_assert(x, __COUNTER__)
+#define	__Static_assert(x, y)	___Static_assert(x, y)
+#define	___Static_assert(x, y)	typedef char __assert_ ## y[(x) ? 1 : -1] \
+				__unused
 #else
-# define __attribute_format_arg__(x) /* Ignore */
+#define	_Static_assert(x, y)	struct __hack
+#endif
 #endif
 
-/* At some point during the gcc 2.97 development the `strfmon' format
-   attribute for functions was introduced.  We don't want to use it
-   unconditionally (although this would be possible) since it
-   generates warnings.  */
-#if __GNUC_PREREQ (2,97) || __glibc_has_attribute (__format__)
-# define __attribute_format_strfmon__(a,b) \
-  __attribute__ ((__format__ (__strfmon__, a, b)))
+#if !__has_extension(c_thread_local)
+/*
+ * XXX: Some compilers (Clang 3.3, GCC 4.7) falsely announce C++11 mode
+ * without actually supporting the thread_local keyword. Don't check for
+ * the presence of C++11 when defining _Thread_local.
+ */
+#if /* (defined(__cplusplus) && __cplusplus >= 201103L) || */ \
+    __has_extension(cxx_thread_local)
+#define	_Thread_local		thread_local
 #else
-# define __attribute_format_strfmon__(a,b) /* Ignore */
+#define	_Thread_local		__thread
+#endif
 #endif
 
-/* The nonnull function attribute marks pointer parameters that
-   must not be NULL.  This has the name __nonnull in glibc,
-   and __attribute_nonnull__ in files shared with Gnulib to avoid
-   collision with a different __nonnull in DragonFlyBSD 5.9.  */
-#ifndef __attribute_nonnull__
-# if __GNUC_PREREQ (3,3) || __glibc_has_attribute (__nonnull__)
-#  define __attribute_nonnull__(params) __attribute__ ((__nonnull__ params))
-# else
-#  define __attribute_nonnull__(params)
-# endif
-#endif
-#ifndef __nonnull
-# define __nonnull(params) __attribute_nonnull__ (params)
+#endif /* __STDC_VERSION__ || __STDC_VERSION__ < 201112L */
+
+/*
+ * Emulation of C11 _Generic().  Unlike the previously defined C11
+ * keywords, it is not possible to implement this using exactly the same
+ * syntax.  Therefore implement something similar under the name
+ * __generic().  Unlike _Generic(), this macro can only distinguish
+ * between a single type, so it requires nested invocations to
+ * distinguish multiple cases.
+ *
+ * Note that the comma operator is used to force expr to decay in
+ * order to match _Generic().
+ */
+
+#if (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
+    __has_extension(c_generic_selections)
+#define	__generic(expr, t, yes, no)					\
+	_Generic(expr, t: yes, default: no)
+#elif __GNUC_PREREQ__(3, 1) && !defined(__cplusplus)
+#define	__generic(expr, t, yes, no)					\
+	__builtin_choose_expr(						\
+	    __builtin_types_compatible_p(__typeof((0, (expr))), t), yes, no)
 #endif
 
-/* The returns_nonnull function attribute marks the return type of the function
-   as always being non-null.  */
-#ifndef __returns_nonnull
-# if __GNUC_PREREQ (4, 9) || __glibc_has_attribute (__returns_nonnull__)
-# define __returns_nonnull __attribute__ ((__returns_nonnull__))
-# else
-# define __returns_nonnull
-# endif
-#endif
-
-/* If fortification mode, we warn about unused results of certain
-   function calls which can lead to problems.  */
-#if __GNUC_PREREQ (3,4) || __glibc_has_attribute (__warn_unused_result__)
-# define __attribute_warn_unused_result__ \
-   __attribute__ ((__warn_unused_result__))
-# if defined __USE_FORTIFY_LEVEL && __USE_FORTIFY_LEVEL > 0
-#  define __wur __attribute_warn_unused_result__
-# endif
+/*
+ * C99 Static array indices in function parameter declarations.  Syntax such as:
+ * void bar(int myArray[static 10]);
+ * is allowed in C99 but not in C++.  Define __min_size appropriately so
+ * headers using it can be compiled in either language.  Use like this:
+ * void bar(int myArray[__min_size(10)]);
+ */
+#if !defined(__cplusplus) && \
+    (defined(__clang__) || __GNUC_PREREQ__(4, 6)) && \
+    (!defined(__STDC_VERSION__) || (__STDC_VERSION__ >= 199901))
+#define __min_size(x)	static (x)
 #else
-# define __attribute_warn_unused_result__ /* empty */
-#endif
-#ifndef __wur
-# define __wur /* Ignore */
+#define __min_size(x)	(x)
 #endif
 
-/* Forces a function to be always inlined.  */
-#if __GNUC_PREREQ (3,2) || __glibc_has_attribute (__always_inline__)
-/* The Linux kernel defines __always_inline in stddef.h (283d7573), and
-   it conflicts with this definition.  Therefore undefine it first to
-   allow either header to be included first.  */
-# undef __always_inline
-# define __always_inline __inline __attribute__ ((__always_inline__))
+#if __GNUC_PREREQ__(2, 96)
+#define	__malloc_like	__attribute__((__malloc__))
+#define	__pure		__attribute__((__pure__))
 #else
-# undef __always_inline
-# define __always_inline __inline
+#define	__malloc_like
+#define	__pure
 #endif
 
-/* Associate error messages with the source location of the call site rather
-   than with the source location inside the function.  */
-#if __GNUC_PREREQ (4,3) || __glibc_has_attribute (__artificial__)
-# define __attribute_artificial__ __attribute__ ((__artificial__))
+#if __GNUC_PREREQ__(3, 1)
+#define	__always_inline	__inline__ __attribute__((__always_inline__))
 #else
-# define __attribute_artificial__ /* Ignore */
+#define	__always_inline
 #endif
 
-/* GCC 4.3 and above with -std=c99 or -std=gnu99 implements ISO C99
-   inline semantics, unless -fgnu89-inline is used.  Using __GNUC_STDC_INLINE__
-   or __GNUC_GNU_INLINE is not a good enough check for gcc because gcc versions
-   older than 4.3 may define these macros and still not guarantee GNU inlining
-   semantics.
-
-   clang++ identifies itself as gcc-4.2, but has support for GNU inlining
-   semantics, that can be checked for by using the __GNUC_STDC_INLINE_ and
-   __GNUC_GNU_INLINE__ macro definitions.  */
-#if (!defined __cplusplus || __GNUC_PREREQ (4,3) \
-     || (defined __clang__ && (defined __GNUC_STDC_INLINE__ \
-			       || defined __GNUC_GNU_INLINE__)))
-# if defined __GNUC_STDC_INLINE__ || defined __cplusplus
-#  define __extern_inline extern __inline __attribute__ ((__gnu_inline__))
-#  define __extern_always_inline \
-  extern __always_inline __attribute__ ((__gnu_inline__))
-# else
-#  define __extern_inline extern __inline
-#  define __extern_always_inline extern __always_inline
-# endif
-#endif
-
-#ifdef __extern_always_inline
-# define __fortify_function __extern_always_inline __attribute_artificial__
-#endif
-
-/* GCC 4.3 and above allow passing all anonymous arguments of an
-   __extern_always_inline function to some other vararg function.  */
-#if __GNUC_PREREQ (4,3)
-# define __va_arg_pack() __builtin_va_arg_pack ()
-# define __va_arg_pack_len() __builtin_va_arg_pack_len ()
-#endif
-
-/* It is possible to compile containing GCC extensions even if GCC is
-   run in pedantic mode if the uses are carefully marked using the
-   `__extension__' keyword.  But this is not generally available before
-   version 2.8.  */
-#if !(__GNUC_PREREQ (2,8) || defined __clang__)
-# define __extension__		/* Ignore */
-#endif
-
-/* __restrict is known in EGCS 1.2 and above, and in clang.
-   It works also in C++ mode (outside of arrays), but only when spelled
-   as '__restrict', not 'restrict'.  */
-#if !(__GNUC_PREREQ (2,92) || __clang_major__ >= 3)
-# if defined __STDC_VERSION__ && __STDC_VERSION__ >= 199901L
-#  define __restrict	restrict
-# else
-#  define __restrict	/* Ignore */
-# endif
-#endif
-
-/* ISO C99 also allows to declare arrays as non-overlapping.  The syntax is
-     array_name[restrict]
-   GCC 3.1 and clang support this.
-   This syntax is not usable in C++ mode.  */
-#if (__GNUC_PREREQ (3,1) || __clang_major__ >= 3) && !defined __cplusplus
-# define __restrict_arr	__restrict
+#if __GNUC_PREREQ__(3, 1)
+#define	__noinline	__attribute__ ((__noinline__))
 #else
-# ifdef __GNUC__
-#  define __restrict_arr	/* Not supported in old GCC.  */
-# else
-#  if defined __STDC_VERSION__ && __STDC_VERSION__ >= 199901L
-#   define __restrict_arr	restrict
-#  else
-/* Some other non-C99 compiler.  */
-#   define __restrict_arr	/* Not supported.  */
-#  endif
-# endif
+#define	__noinline
 #endif
 
-#if (__GNUC__ >= 3) || __glibc_has_builtin (__builtin_expect)
-# define __glibc_unlikely(cond)	__builtin_expect ((cond), 0)
-# define __glibc_likely(cond)	__builtin_expect ((cond), 1)
+#if __GNUC_PREREQ__(3, 3)
+#define	__nonnull(x)	__attribute__((__nonnull__ x))
+#define	__nonnull_all	__attribute__((__nonnull__))
 #else
-# define __glibc_unlikely(cond)	(cond)
-# define __glibc_likely(cond)	(cond)
+#define	__nonnull(x)
+#define	__nonnull_all
 #endif
 
-#if (!defined _Noreturn \
-     && (defined __STDC_VERSION__ ? __STDC_VERSION__ : 0) < 201112 \
-     &&  !(__GNUC_PREREQ (4,7) \
-           || (3 < __clang_major__ + (5 <= __clang_minor__))))
-# if __GNUC_PREREQ (2,8)
-#  define _Noreturn __attribute__ ((__noreturn__))
-# else
-#  define _Noreturn
-# endif
-#endif
-
-#if __GNUC_PREREQ (8, 0)
-/* Describes a char array whose address can safely be passed as the first
-   argument to strncpy and strncat, as the char array is not necessarily
-   a NUL-terminated string.  */
-# define __attribute_nonstring__ __attribute__ ((__nonstring__))
+#if __GNUC_PREREQ__(3, 4)
+#define	__fastcall	__attribute__((__fastcall__))
+#define	__result_use_check	__attribute__((__warn_unused_result__))
 #else
-# define __attribute_nonstring__
+#define	__fastcall
+#define	__result_use_check
 #endif
 
-/* Undefine (also defined in libc-symbols.h).  */
-#undef __attribute_copy__
-#if __GNUC_PREREQ (9, 0)
-/* Copies attributes from the declaration or type referenced by
-   the argument.  */
-# define __attribute_copy__(arg) __attribute__ ((__copy__ (arg)))
+#if __GNUC_PREREQ__(4, 1)
+#define	__returns_twice	__attribute__((__returns_twice__))
 #else
-# define __attribute_copy__(arg)
+#define	__returns_twice
 #endif
 
-#if (!defined _Static_assert && !defined __cplusplus \
-     && (defined __STDC_VERSION__ ? __STDC_VERSION__ : 0) < 201112 \
-     && (!(__GNUC_PREREQ (4, 6) || __clang_major__ >= 4) \
-         || defined __STRICT_ANSI__))
-# define _Static_assert(expr, diagnostic) \
-    extern int (*__Static_assert_function (void)) \
-      [!!sizeof (struct { int __error_if_negative: (expr) ? 2 : -1; })]
-#endif
-
-/* Gnulib avoids including these, as they don't work on non-glibc or
-   older glibc platforms.  */
-#ifndef __GNULIB_CDEFS
-# include <bits/wordsize.h>
-# include <bits/long-double.h>
-#endif
-
-#if __LDOUBLE_REDIRECTS_TO_FLOAT128_ABI == 1
-# ifdef __REDIRECT
-
-/* Alias name defined automatically.  */
-#  define __LDBL_REDIR(name, proto) ... unused__ldbl_redir
-#  define __LDBL_REDIR_DECL(name) \
-  extern __typeof (name) name __asm (__ASMNAME ("__" #name "ieee128"));
-
-/* Alias name defined automatically, with leading underscores.  */
-#  define __LDBL_REDIR2_DECL(name) \
-  extern __typeof (__##name) __##name \
-    __asm (__ASMNAME ("__" #name "ieee128"));
-
-/* Alias name defined manually.  */
-#  define __LDBL_REDIR1(name, proto, alias) ... unused__ldbl_redir1
-#  define __LDBL_REDIR1_DECL(name, alias) \
-  extern __typeof (name) name __asm (__ASMNAME (#alias));
-
-#  define __LDBL_REDIR1_NTH(name, proto, alias) \
-  __REDIRECT_NTH (name, proto, alias)
-#  define __REDIRECT_NTH_LDBL(name, proto, alias) \
-  __LDBL_REDIR1_NTH (name, proto, __##alias##ieee128)
-
-/* Unused.  */
-#  define __REDIRECT_LDBL(name, proto, alias) ... unused__redirect_ldbl
-#  define __LDBL_REDIR_NTH(name, proto) ... unused__ldbl_redir_nth
-
-# else
-_Static_assert (0, "IEEE 128-bits long double requires redirection on this platform");
-# endif
-#elif defined __LONG_DOUBLE_MATH_OPTIONAL && defined __NO_LONG_DOUBLE_MATH
-# define __LDBL_COMPAT 1
-# ifdef __REDIRECT
-#  define __LDBL_REDIR1(name, proto, alias) __REDIRECT (name, proto, alias)
-#  define __LDBL_REDIR(name, proto) \
-  __LDBL_REDIR1 (name, proto, __nldbl_##name)
-#  define __LDBL_REDIR1_NTH(name, proto, alias) __REDIRECT_NTH (name, proto, alias)
-#  define __LDBL_REDIR_NTH(name, proto) \
-  __LDBL_REDIR1_NTH (name, proto, __nldbl_##name)
-#  define __LDBL_REDIR2_DECL(name) \
-  extern __typeof (__##name) __##name __asm (__ASMNAME ("__nldbl___" #name));
-#  define __LDBL_REDIR1_DECL(name, alias) \
-  extern __typeof (name) name __asm (__ASMNAME (#alias));
-#  define __LDBL_REDIR_DECL(name) \
-  extern __typeof (name) name __asm (__ASMNAME ("__nldbl_" #name));
-#  define __REDIRECT_LDBL(name, proto, alias) \
-  __LDBL_REDIR1 (name, proto, __nldbl_##alias)
-#  define __REDIRECT_NTH_LDBL(name, proto, alias) \
-  __LDBL_REDIR1_NTH (name, proto, __nldbl_##alias)
-# endif
-#endif
-#if (!defined __LDBL_COMPAT && __LDOUBLE_REDIRECTS_TO_FLOAT128_ABI == 0) \
-    || !defined __REDIRECT
-# define __LDBL_REDIR1(name, proto, alias) name proto
-# define __LDBL_REDIR(name, proto) name proto
-# define __LDBL_REDIR1_NTH(name, proto, alias) name proto __THROW
-# define __LDBL_REDIR_NTH(name, proto) name proto __THROW
-# define __LDBL_REDIR2_DECL(name)
-# define __LDBL_REDIR_DECL(name)
-# ifdef __REDIRECT
-#  define __REDIRECT_LDBL(name, proto, alias) __REDIRECT (name, proto, alias)
-#  define __REDIRECT_NTH_LDBL(name, proto, alias) \
-  __REDIRECT_NTH (name, proto, alias)
-# endif
-#endif
-
-/* __glibc_macro_warning (MESSAGE) issues warning MESSAGE.  This is
-   intended for use in preprocessor macros.
-
-   Note: MESSAGE must be a _single_ string; concatenation of string
-   literals is not supported.  */
-#if __GNUC_PREREQ (4,8) || __glibc_clang_prereq (3,5)
-# define __glibc_macro_warning1(message) _Pragma (#message)
-# define __glibc_macro_warning(message) \
-  __glibc_macro_warning1 (GCC warning message)
+#if __GNUC_PREREQ__(4, 6) || __has_builtin(__builtin_unreachable)
+#define	__unreachable()	__builtin_unreachable()
 #else
-# define __glibc_macro_warning(msg)
+#define	__unreachable()	((void)0)
 #endif
 
-/* Generic selection (ISO C11) is a C-only feature, available in GCC
-   since version 4.9.  Previous versions do not provide generic
-   selection, even though they might set __STDC_VERSION__ to 201112L,
-   when in -std=c11 mode.  Thus, we must check for !defined __GNUC__
-   when testing __STDC_VERSION__ for generic selection support.
-   On the other hand, Clang also defines __GNUC__, so a clang-specific
-   check is required to enable the use of generic selection.  */
-#if !defined __cplusplus \
-    && (__GNUC_PREREQ (4, 9) \
-	|| __glibc_has_extension (c_generic_selections) \
-	|| (!defined __GNUC__ && defined __STDC_VERSION__ \
-	    && __STDC_VERSION__ >= 201112L))
-# define __HAVE_GENERIC_SELECTION 1
+/* XXX: should use `#if __STDC_VERSION__ < 199901'. */
+#if !__GNUC_PREREQ__(2, 7)
+#define	__func__	NULL
+#endif
+
+/*
+ * We use `__restrict' as a way to define the `restrict' type qualifier
+ * without disturbing older software that is unaware of C99 keywords.
+ * GCC also provides `__restrict' as an extension to support C99-style
+ * restricted pointers in other language modes.
+ */
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901
+#define	__restrict	restrict
+#elif !__GNUC_PREREQ__(2, 95)
+#define	__restrict
+#endif
+
+/*
+ * Additionally, we allow to use `__restrict_arr' for declaring arrays as
+ * non-overlapping per C99.  That's supported since gcc 3.1, but it's not
+ * allowed in C++.
+ */
+#if defined(__cplusplus) || !__GNUC_PREREQ__(3, 1)
+#define __restrict_arr
+#elif defined __STDC_VERSION__ && __STDC_VERSION__ >= 199901L
+#define __restrict_arr       restrict
 #else
-# define __HAVE_GENERIC_SELECTION 0
+#define __restrict_arr
 #endif
 
-#if __GNUC_PREREQ (10, 0)
-/* Designates a 1-based positional argument ref-index of pointer type
-   that can be used to access size-index elements of the pointed-to
-   array according to access mode, or at least one element when
-   size-index is not provided:
-     access (access-mode, <ref-index> [, <size-index>])  */
-#  define __attr_access(x) __attribute__ ((__access__ x))
-/* For _FORTIFY_SOURCE == 3 we use __builtin_dynamic_object_size, which may
-   use the access attribute to get object sizes from function definition
-   arguments, so we can't use them on functions we fortify.  Drop the object
-   size hints for such functions.  */
-#  if __USE_FORTIFY_LEVEL == 3
-#    define __fortified_attr_access(a, o, s) __attribute__ ((__access__ (a, o)))
-#  else
-#    define __fortified_attr_access(a, o, s) __attr_access ((a, o, s))
-#  endif
-#  if __GNUC_PREREQ (11, 0)
-#    define __attr_access_none(argno) __attribute__ ((__access__ (__none__, argno)))
-#  else
-#    define __attr_access_none(argno)
-#  endif
+/*
+ * GNU C version 2.96 adds explicit branch prediction so that
+ * the CPU back-end can hint the processor and also so that
+ * code blocks can be reordered such that the predicted path
+ * sees a more linear flow, thus improving cache behavior, etc.
+ *
+ * The following two macros provide us with a way to utilize this
+ * compiler feature.  Use __predict_true() if you expect the expression
+ * to evaluate to true, and __predict_false() if you expect the
+ * expression to evaluate to false.
+ *
+ * A few notes about usage:
+ *
+ *	* Generally, __predict_false() error condition checks (unless
+ *	  you have some _strong_ reason to do otherwise, in which case
+ *	  document it), and/or __predict_true() `no-error' condition
+ *	  checks, assuming you want to optimize for the no-error case.
+ *
+ *	* Other than that, if you don't know the likelihood of a test
+ *	  succeeding from empirical or other `hard' evidence, don't
+ *	  make predictions.
+ *
+ *	* These are meant to be used in places that are run `a lot'.
+ *	  It is wasteful to make predictions in code that is run
+ *	  seldomly (e.g. at subsystem initialization time) as the
+ *	  basic block reordering that this affects can often generate
+ *	  larger code.
+ */
+#if __GNUC_PREREQ__(2, 96)
+#define	__predict_true(exp)     __builtin_expect((exp), 1)
+#define	__predict_false(exp)    __builtin_expect((exp), 0)
 #else
-#  define __fortified_attr_access(a, o, s)
-#  define __attr_access(x)
-#  define __attr_access_none(argno)
+#define	__predict_true(exp)     (exp)
+#define	__predict_false(exp)    (exp)
 #endif
 
-#if __GNUC_PREREQ (11, 0)
-/* Designates dealloc as a function to call to deallocate objects
-   allocated by the declared function.  */
-# define __attr_dealloc(dealloc, argno) \
-    __attribute__ ((__malloc__ (dealloc, argno)))
-# define __attr_dealloc_free __attr_dealloc (__builtin_free, 1)
+#if __GNUC_PREREQ__(4, 0)
+#define	__null_sentinel	__attribute__((__sentinel__))
+#define	__exported	__attribute__((__visibility__("default")))
+/* Only default visibility is supported on PE/COFF targets. */
+#ifndef __CYGWIN__
+#define	__hidden	__attribute__((__visibility__("hidden")))
 #else
-# define __attr_dealloc(dealloc, argno)
-# define __attr_dealloc_free
+#define	__hidden
 #endif
-
-/* Specify that a function such as setjmp or vfork may return
-   twice.  */
-#if __GNUC_PREREQ (4, 1)
-# define __attribute_returns_twice__ __attribute__ ((__returns_twice__))
 #else
-# define __attribute_returns_twice__ /* Ignore.  */
+#define	__null_sentinel
+#define	__exported
+#define	__hidden
 #endif
 
-#endif	 /* sys/cdefs.h */
+#define __offsetof(type, field)	offsetof(type, field)
+#define	__rangeof(type, start, end) \
+	(__offsetof(type, end) - __offsetof(type, start))
+
+/*
+ * Given the pointer x to the member m of the struct s, return
+ * a pointer to the containing structure.  When using GCC, we first
+ * assign pointer x to a local variable, to check that its type is
+ * compatible with member m.
+ */
+#if __GNUC_PREREQ__(3, 1)
+#define	__containerof(x, s, m) ({					\
+	const volatile __typeof(((s *)0)->m) *__x = (x);		\
+	__DEQUALIFY(s *, (const volatile char *)__x - __offsetof(s, m));\
+})
+#else
+#define	__containerof(x, s, m)						\
+	__DEQUALIFY(s *, (const volatile char *)(x) - __offsetof(s, m))
+#endif
+
+/*
+ * Compiler-dependent macros to declare that functions take printf-like
+ * or scanf-like arguments.  They are null except for versions of gcc
+ * that are known to support the features properly (old versions of gcc-2
+ * didn't permit keeping the keywords out of the application namespace).
+ */
+#if !__GNUC_PREREQ__(2, 7)
+#define	__printflike(fmtarg, firstvararg)
+#define	__scanflike(fmtarg, firstvararg)
+#define	__format_arg(fmtarg)
+#define	__strfmonlike(fmtarg, firstvararg)
+#define	__strftimelike(fmtarg, firstvararg)
+#else
+#define	__printflike(fmtarg, firstvararg) \
+	    __attribute__((__format__ (__printf__, fmtarg, firstvararg)))
+#define	__scanflike(fmtarg, firstvararg) \
+	    __attribute__((__format__ (__scanf__, fmtarg, firstvararg)))
+#define	__format_arg(fmtarg)	__attribute__((__format_arg__ (fmtarg)))
+#define	__strfmonlike(fmtarg, firstvararg) \
+	    __attribute__((__format__ (__strfmon__, fmtarg, firstvararg)))
+#define	__strftimelike(fmtarg, firstvararg) \
+	    __attribute__((__format__ (__strftime__, fmtarg, firstvararg)))
+#endif
+
+/* Compiler-dependent macros that rely on FreeBSD-specific extensions. */
+#if defined(__FreeBSD_cc_version) && __FreeBSD_cc_version >= 300001 && \
+    defined(__GNUC__)
+#define	__printf0like(fmtarg, firstvararg) \
+	    __attribute__((__format__ (__printf0__, fmtarg, firstvararg)))
+#else
+#define	__printf0like(fmtarg, firstvararg)
+#endif
+
+#if defined(__GNUC__)
+#define	__strong_reference(sym,aliassym)	\
+	extern __typeof (sym) aliassym __attribute__ ((__alias__ (#sym)))
+#ifdef __ELF__
+#ifdef __STDC__
+#define	__weak_reference(sym,alias)	\
+	__asm__(".weak " #alias);	\
+	__asm__(".equ "  #alias ", " #sym)
+#define	__warn_references(sym,msg)	\
+	__asm__(".section .gnu.warning." #sym);	\
+	__asm__(".asciz \"" msg "\"");	\
+	__asm__(".previous")
+#define	__sym_compat(sym,impl,verid)	\
+	__asm__(".symver " #impl ", " #sym "@" #verid)
+#define	__sym_default(sym,impl,verid)	\
+	__asm__(".symver " #impl ", " #sym "@@" #verid)
+#else
+#define	__weak_reference(sym,alias)	\
+	__asm__(".weak alias");		\
+	__asm__(".equ alias, sym")
+#define	__warn_references(sym,msg)	\
+	__asm__(".section .gnu.warning.sym"); \
+	__asm__(".asciz \"msg\"");	\
+	__asm__(".previous")
+#define	__sym_compat(sym,impl,verid)	\
+	__asm__(".symver impl, sym@verid")
+#define	__sym_default(impl,sym,verid)	\
+	__asm__(".symver impl, sym@@verid")
+#endif	/* __STDC__ */
+#else	/* !__ELF__ */
+#ifdef __STDC__
+#define	__weak_reference(sym,alias)	\
+	__asm__(".stabs \"_" #alias "\",11,0,0,0");	\
+	__asm__(".stabs \"_" #sym "\",1,0,0,0")
+#define	__warn_references(sym,msg)	\
+	__asm__(".stabs \"" msg "\",30,0,0,0");		\
+	__asm__(".stabs \"_" #sym "\",1,0,0,0")
+#else
+#define	__weak_reference(sym,alias)	\
+	__asm__(".stabs \"_/**/alias\",11,0,0,0");	\
+	__asm__(".stabs \"_/**/sym\",1,0,0,0")
+#define	__warn_references(sym,msg)	\
+	__asm__(".stabs msg,30,0,0,0");			\
+	__asm__(".stabs \"_/**/sym\",1,0,0,0")
+#endif	/* __STDC__ */
+#endif	/* __ELF__ */
+#endif	/* __GNUC__ */
+
+#ifndef	__FBSDID
+#define	__FBSDID(s)	struct __hack
+#endif
+
+#ifndef	__RCSID
+#define	__RCSID(s)	struct __hack
+#endif
+
+#ifndef	__RCSID_SOURCE
+#define	__RCSID_SOURCE(s)	struct __hack
+#endif
+
+#ifndef	__SCCSID
+#define	__SCCSID(s)	struct __hack
+#endif
+
+#ifndef	__COPYRIGHT
+#define	__COPYRIGHT(s)	struct __hack
+#endif
+
+#ifndef	__DECONST
+#define	__DECONST(type, var)	((type)(__uintptr_t)(const void *)(var))
+#endif
+
+#ifndef	__DEVOLATILE
+#define	__DEVOLATILE(type, var)	((type)(__uintptr_t)(volatile void *)(var))
+#endif
+
+#ifndef	__DEQUALIFY
+#define	__DEQUALIFY(type, var)	((type)(__uintptr_t)(const volatile void *)(var))
+#endif
+
+/*
+ * Nullability qualifiers: currently only supported by Clang.
+ */
+#if !(defined(__clang__) && __has_feature(nullability))
+#define	_Nonnull
+#define	_Nullable
+#define	_Null_unspecified
+#define	__NULLABILITY_PRAGMA_PUSH
+#define	__NULLABILITY_PRAGMA_POP
+#else
+#define	__NULLABILITY_PRAGMA_PUSH _Pragma("clang diagnostic push")	\
+	_Pragma("clang diagnostic ignored \"-Wnullability-completeness\"")
+#define	__NULLABILITY_PRAGMA_POP _Pragma("clang diagnostic pop")
+#endif
+
+/*
+ * Type Safety Checking
+ *
+ * Clang provides additional attributes to enable checking type safety
+ * properties that cannot be enforced by the C type system. 
+ */
+
+#if __has_attribute(__argument_with_type_tag__) && \
+    __has_attribute(__type_tag_for_datatype__)
+#define	__arg_type_tag(arg_kind, arg_idx, type_tag_idx) \
+	    __attribute__((__argument_with_type_tag__(arg_kind, arg_idx, type_tag_idx)))
+#define	__datatype_type_tag(kind, type) \
+	    __attribute__((__type_tag_for_datatype__(kind, type)))
+#else
+#define	__arg_type_tag(arg_kind, arg_idx, type_tag_idx)
+#define	__datatype_type_tag(kind, type)
+#endif
+
+/*
+ * Lock annotations.
+ *
+ * Clang provides support for doing basic thread-safety tests at
+ * compile-time, by marking which locks will/should be held when
+ * entering/leaving a functions.
+ *
+ * Furthermore, it is also possible to annotate variables and structure
+ * members to enforce that they are only accessed when certain locks are
+ * held.
+ */
+
+#if __has_extension(c_thread_safety_attributes)
+#define	__lock_annotate(x)	__attribute__((x))
+#else
+#define	__lock_annotate(x)
+#endif
+
+/* Structure implements a lock. */
+/* FIXME: Use __lockable__, etc. to avoid colliding with user namespace macros,
+ * once clang is fixed: https://bugs.llvm.org/show_bug.cgi?id=34319 */
+#define	__lockable		__lock_annotate(lockable)
+
+/* Function acquires an exclusive or shared lock. */
+#define	__locks_exclusive(...) \
+	__lock_annotate(exclusive_lock_function(__VA_ARGS__))
+#define	__locks_shared(...) \
+	__lock_annotate(shared_lock_function(__VA_ARGS__))
+
+/* Function attempts to acquire an exclusive or shared lock. */
+#define	__trylocks_exclusive(...) \
+	__lock_annotate(exclusive_trylock_function(__VA_ARGS__))
+#define	__trylocks_shared(...) \
+	__lock_annotate(shared_trylock_function(__VA_ARGS__))
+
+/* Function releases a lock. */
+#define	__unlocks(...)		__lock_annotate(unlock_function(__VA_ARGS__))
+
+/* Function asserts that an exclusive or shared lock is held. */
+#define	__asserts_exclusive(...) \
+	__lock_annotate(assert_exclusive_lock(__VA_ARGS__))
+#define	__asserts_shared(...) \
+	__lock_annotate(assert_shared_lock(__VA_ARGS__))
+
+/* Function requires that an exclusive or shared lock is or is not held. */
+#define	__requires_exclusive(...) \
+	__lock_annotate(exclusive_locks_required(__VA_ARGS__))
+#define	__requires_shared(...) \
+	__lock_annotate(shared_locks_required(__VA_ARGS__))
+#define	__requires_unlocked(...) \
+	__lock_annotate(locks_excluded(__VA_ARGS__))
+
+/* Function should not be analyzed. */
+#define	__no_lock_analysis	__lock_annotate(no_thread_safety_analysis)
+
+/*
+ * Function or variable should not be sanitized, e.g., by AddressSanitizer.
+ * GCC has the nosanitize attribute, but as a function attribute only, and
+ * warns on use as a variable attribute.
+ */
+#if __has_attribute(no_sanitize) && defined(__clang__)
+#ifdef _KERNEL
+#define __nosanitizeaddress	__attribute__((no_sanitize("kernel-address")))
+#define __nosanitizememory	__attribute__((no_sanitize("kernel-memory")))
+#else
+#define __nosanitizeaddress	__attribute__((no_sanitize("address")))
+#define __nosanitizememory	__attribute__((no_sanitize("memory")))
+#endif
+#define __nosanitizethread	__attribute__((no_sanitize("thread")))
+#else
+#define __nosanitizeaddress
+#define __nosanitizememory
+#define __nosanitizethread
+#endif
+
+/* Guard variables and structure members by lock. */
+#define	__guarded_by(x)		__lock_annotate(guarded_by(x))
+#define	__pt_guarded_by(x)	__lock_annotate(pt_guarded_by(x))
+
+/* Alignment builtins for better type checking and improved code generation. */
+/* Provide fallback versions for other compilers (GCC/Clang < 10): */
+#if !__has_builtin(__builtin_is_aligned)
+#define __builtin_is_aligned(x, align)	\
+	(((__uintptr_t)x & ((align) - 1)) == 0)
+#endif
+#if !__has_builtin(__builtin_align_up)
+#define __builtin_align_up(x, align)	\
+	((__typeof__(x))(((__uintptr_t)(x)+((align)-1))&(~((align)-1))))
+#endif
+#if !__has_builtin(__builtin_align_down)
+#define __builtin_align_down(x, align)	\
+	((__typeof__(x))((x)&(~((align)-1))))
+#endif
+
+#define __align_up(x, y) __builtin_align_up(x, y)
+#define __align_down(x, y) __builtin_align_down(x, y)
+#define __is_aligned(x, y) __builtin_is_aligned(x, y)
+
+#endif /* !_SYS_CDEFS_H_ */

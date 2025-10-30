@@ -1,148 +1,80 @@
-/* Copyright (C) 1991-2024 Free Software Foundation, Inc.
-   This file is part of the GNU C Library.
+/*-
+ * Copyright (c) 2002 Mike Barcroft <mike@FreeBSD.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ * $FreeBSD: head/include/strings.h 272673 2014-10-07 04:54:11Z delphij $
+ */
 
-   The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Lesser General Public
-   License as published by the Free Software Foundation; either
-   version 2.1 of the License, or (at your option) any later version.
+#ifndef _STRINGS_H_
+#define	_STRINGS_H_
 
-   The GNU C Library is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Lesser General Public License for more details.
+#include <sys/cdefs.h>
+#include <sys/_types.h>
 
-   You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, see
-   <https://www.gnu.org/licenses/>.  */
+#if __POSIX_VISIBLE >= 200809
+#include <sys/_locale.h>
+#endif
 
-#ifndef	_STRINGS_H
-#define	_STRINGS_H	1
-
-#include <features.h>
-#define __need_size_t
-#include <stddef.h>
-
-/* Tell the caller that we provide correct C++ prototypes.  */
-#if defined __cplusplus && __GNUC_PREREQ (4, 4)
-# define __CORRECT_ISO_CPP_STRINGS_H_PROTO
+#ifndef _SIZE_T_DECLARED
+typedef	__size_t	size_t;
+#define	_SIZE_T_DECLARED
 #endif
 
 __BEGIN_DECLS
-
-#if defined __USE_MISC || !defined __USE_XOPEN2K8
-/* Compare N bytes of S1 and S2 (same as memcmp).  */
-extern int bcmp (const void *__s1, const void *__s2, size_t __n)
-     __THROW __attribute_pure__ __nonnull ((1, 2));
-
-/* Copy N bytes of SRC to DEST (like memmove, but args reversed).  */
-extern void bcopy (const void *__src, void *__dest, size_t __n)
-  __THROW __nonnull ((1, 2));
-
-/* Set N bytes of S to 0.  */
-extern void bzero (void *__s, size_t __n) __THROW __nonnull ((1));
-
-/* Find the first occurrence of C in S (same as strchr).  */
-# ifdef __CORRECT_ISO_CPP_STRINGS_H_PROTO
-extern "C++"
-{
-extern char *index (char *__s, int __c)
-     __THROW __asm ("index") __attribute_pure__ __nonnull ((1));
-extern const char *index (const char *__s, int __c)
-     __THROW __asm ("index") __attribute_pure__ __nonnull ((1));
-
-#  if defined __OPTIMIZE__
-__extern_always_inline char *
-index (char *__s, int __c) __THROW
-{
-  return __builtin_index (__s, __c);
-}
-
-__extern_always_inline const char *
-index (const char *__s, int __c) __THROW
-{
-  return __builtin_index (__s, __c);
-}
-#  endif
-}
-# else
-extern char *index (const char *__s, int __c)
-     __THROW __attribute_pure__ __nonnull ((1));
-# endif
-
-/* Find the last occurrence of C in S (same as strrchr).  */
-# ifdef __CORRECT_ISO_CPP_STRINGS_H_PROTO
-extern "C++"
-{
-extern char *rindex (char *__s, int __c)
-     __THROW __asm ("rindex") __attribute_pure__ __nonnull ((1));
-extern const char *rindex (const char *__s, int __c)
-     __THROW __asm ("rindex") __attribute_pure__ __nonnull ((1));
-
-#  if defined __OPTIMIZE__
-__extern_always_inline char *
-rindex (char *__s, int __c) __THROW
-{
-  return __builtin_rindex (__s, __c);
-}
-
-__extern_always_inline const char *
-rindex (const char *__s, int __c) __THROW
-{
-  return __builtin_rindex (__s, __c);
-}
-#  endif
-}
-# else
-extern char *rindex (const char *__s, int __c)
-     __THROW __attribute_pure__ __nonnull ((1));
-# endif
+#if __BSD_VISIBLE || __POSIX_VISIBLE <= 200112
+int	 bcmp(const void *, const void *, size_t) __pure;	/* LEGACY */
+void	 bcopy(const void *, void *, size_t);			/* LEGACY */
+void	 bzero(void *, size_t);					/* LEGACY */
 #endif
-
-#if defined __USE_MISC || !defined __USE_XOPEN2K8 || defined __USE_XOPEN2K8XSI
-/* Return the position of the first bit set in I, or 0 if none are set.
-   The least-significant bit is position 1, the most-significant 32.  */
-extern int ffs (int __i) __THROW __attribute_const__;
+#if __BSD_VISIBLE
+void	 explicit_bzero(void *, size_t);
 #endif
-
-/* The following two functions are non-standard but necessary for non-32 bit
-   platforms.  */
-# ifdef	__USE_MISC
-extern int ffsl (long int __l) __THROW __attribute_const__;
-__extension__ extern int ffsll (long long int __ll)
-     __THROW __attribute_const__;
-# endif
-
-/* Compare S1 and S2, ignoring case.  */
-extern int strcasecmp (const char *__s1, const char *__s2)
-     __THROW __attribute_pure__ __nonnull ((1, 2));
-
-/* Compare no more than N chars of S1 and S2, ignoring case.  */
-extern int strncasecmp (const char *__s1, const char *__s2, size_t __n)
-     __THROW __attribute_pure__ __nonnull ((1, 2));
-
-#ifdef	__USE_XOPEN2K8
-/* POSIX.1-2008 extended locale interface (see locale.h).  */
-# include <bits/types/locale_t.h>
-
-/* Compare S1 and S2, ignoring case, using collation rules from LOC.  */
-extern int strcasecmp_l (const char *__s1, const char *__s2, locale_t __loc)
-     __THROW __attribute_pure__ __nonnull ((1, 2, 3));
-
-/* Compare no more than N chars of S1 and S2, ignoring case, using
-   collation rules from LOC.  */
-extern int strncasecmp_l (const char *__s1, const char *__s2,
-			  size_t __n, locale_t __loc)
-     __THROW __attribute_pure__ __nonnull ((1, 2, 4));
+#if __MISC_VISIBLE || __POSIX_VISIBLE < 200809 || __XSI_VISIBLE >= 700
+int	 ffs(int) __pure2;
 #endif
+#if __BSD_VISIBLE
+int	 ffsl(long) __pure2;
+int	 ffsll(long long) __pure2;
+int	 fls(int) __pure2;
+int	 flsl(long) __pure2;
+int	 flsll(long long) __pure2;
+#endif
+#if __BSD_VISIBLE || __POSIX_VISIBLE <= 200112
+char	*index(const char *, int) __pure;			/* LEGACY */
+char	*rindex(const char *, int) __pure;			/* LEGACY */
+#endif
+int	 strcasecmp(const char *, const char *) __pure;
+int	 strncasecmp(const char *, const char *, size_t) __pure;
 
+#if __POSIX_VISIBLE >= 200809
+int	 strcasecmp_l (const char *, const char *, locale_t);
+int	 strncasecmp_l (const char *, const char *, size_t, locale_t);
+#endif
 __END_DECLS
 
-#if __GNUC_PREREQ (3,4) && __USE_FORTIFY_LEVEL > 0 \
-    && defined __fortify_function
-/* Functions with security checks.  */
-# if defined __USE_MISC || !defined __USE_XOPEN2K8
-#  include <bits/strings_fortified.h>
-# endif
+#if __SSP_FORTIFY_LEVEL > 0
+#include <ssp/strings.h>
 #endif
 
-#endif	/* strings.h  */
+#endif /* _STRINGS_H_ */

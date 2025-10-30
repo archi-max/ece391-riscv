@@ -1,418 +1,117 @@
-/* Copyright (C) 1991-2024 Free Software Foundation, Inc.
-   This file is part of the GNU C Library.
-
-   The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Lesser General Public
-   License as published by the Free Software Foundation; either
-   version 2.1 of the License, or (at your option) any later version.
-
-   The GNU C Library is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Lesser General Public License for more details.
-
-   You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, see
-   <https://www.gnu.org/licenses/>.  */
-
 /*
- *	ISO C99 Standard: 7.23 Date and time	<time.h>
+ * time.h
+ * 
+ * Struct and function declarations for dealing with time.
  */
 
-#ifndef	_TIME_H
-#define _TIME_H	1
+#ifndef _TIME_H_
+#define _TIME_H_
 
-#include <features.h>
+#include "_ansi.h"
+#include <sys/cdefs.h>
+#include <sys/reent.h>
 
 #define __need_size_t
 #define __need_NULL
 #include <stddef.h>
 
-/* This defines CLOCKS_PER_SEC, which is the number of processor clock
-   ticks per second, and possibly a number of other constants.   */
-#include <bits/time.h>
+/* Get _CLOCKS_PER_SEC_ */
+#include <machine/time.h>
 
-/* Many of the typedefs and structs whose official home is this header
-   may also need to be defined by other headers.  */
-#include <bits/types/clock_t.h>
-#include <bits/types/time_t.h>
-#include <bits/types/struct_tm.h>
-
-#if defined __USE_POSIX199309 || defined __USE_ISOC11
-# include <bits/types/struct_timespec.h>
+#ifndef _CLOCKS_PER_SEC_
+#define _CLOCKS_PER_SEC_ 1000
 #endif
 
-#ifdef __USE_POSIX199309
-# include <bits/types/clockid_t.h>
-# include <bits/types/timer_t.h>
-# include <bits/types/struct_itimerspec.h>
-struct sigevent;
+#define CLOCKS_PER_SEC _CLOCKS_PER_SEC_
+#define CLK_TCK CLOCKS_PER_SEC
+
+#include <sys/types.h>
+#include <sys/timespec.h>
+
+#if __POSIX_VISIBLE >= 200809
+#include <sys/_locale.h>
 #endif
 
-#ifdef __USE_XOPEN2K
-# ifndef __pid_t_defined
-typedef __pid_t pid_t;
-#  define __pid_t_defined
-# endif
+_BEGIN_STD_C
+
+struct tm
+{
+  int	tm_sec;
+  int	tm_min;
+  int	tm_hour;
+  int	tm_mday;
+  int	tm_mon;
+  int	tm_year;
+  int	tm_wday;
+  int	tm_yday;
+  int	tm_isdst;
+#ifdef __TM_GMTOFF
+  long	__TM_GMTOFF;
+#endif
+#ifdef __TM_ZONE
+  const char *__TM_ZONE;
+#endif
+};
+
+clock_t	   clock (void);
+double	   difftime (time_t _time2, time_t _time1);
+time_t	   mktime (struct tm *_timeptr);
+time_t	   time (time_t *_timer);
+#ifndef _REENT_ONLY
+char	  *asctime (const struct tm *_tblock);
+char	  *ctime (const time_t *_time);
+struct tm *gmtime (const time_t *_timer);
+struct tm *localtime (const time_t *_timer);
+#endif
+size_t	   strftime (char *__restrict _s,
+			     size_t _maxsize, const char *__restrict _fmt,
+			     const struct tm *__restrict _t);
+
+#if __POSIX_VISIBLE >= 200809
+extern size_t strftime_l (char *__restrict _s, size_t _maxsize,
+			  const char *__restrict _fmt,
+			  const struct tm *__restrict _t, locale_t _l);
 #endif
 
-#ifdef __USE_XOPEN2K8
-# include <bits/types/locale_t.h>
+char	  *asctime_r 	(const struct tm *__restrict,
+				 char *__restrict);
+char	  *ctime_r 	(const time_t *, char *);
+struct tm *gmtime_r 	(const time_t *__restrict,
+				 struct tm *__restrict);
+struct tm *localtime_r 	(const time_t *__restrict,
+				 struct tm *__restrict);
+
+_END_STD_C
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-#ifdef __USE_ISOC11
-/* Time base values for timespec_get.  */
-# define TIME_UTC 1
+#if __XSI_VISIBLE
+char      *strptime (const char *__restrict,
+				 const char *__restrict,
+				 struct tm *__restrict);
+#endif
+#if __GNU_VISIBLE
+char *strptime_l (const char *__restrict, const char *__restrict,
+		  struct tm *__restrict, locale_t);
 #endif
 
-__BEGIN_DECLS
-
-/* Time used by the program so far (user time + system time).
-   The result / CLOCKS_PER_SEC is program time in seconds.  */
-extern clock_t clock (void) __THROW;
-
-#ifndef __USE_TIME_BITS64
-/* Return the current time and put it in *TIMER if TIMER is not NULL.  */
-extern time_t time (time_t *__timer) __THROW;
-
-/* Return the difference between TIME1 and TIME0.  */
-extern double difftime (time_t __time1, time_t __time0)
-     __THROW __attribute__ ((__const__));
-
-/* Return the `time_t' representation of TP and normalize TP.  */
-extern time_t mktime (struct tm *__tp) __THROW;
-#else
-# ifdef __REDIRECT_NTH
-extern time_t __REDIRECT_NTH (time, (time_t *__timer), __time64);
-extern double __REDIRECT_NTH (difftime, (time_t __time1, time_t __time0),
-                              __difftime64) __attribute__ ((__const__));
-extern time_t __REDIRECT_NTH (mktime, (struct tm *__tp), __mktime64);
-# else
-#  define time __time64
-#  define difftime __difftime64
-#  define mktime __mktime64
-# endif
+#if __POSIX_VISIBLE
+void      tzset 	(void);
 #endif
+void      _tzset_r 	(struct _reent *);
 
-/* Format TP into S according to FORMAT.
-   Write no more than MAXSIZE characters and return the number
-   of characters written, or 0 if it would exceed MAXSIZE.  */
-extern size_t strftime (char *__restrict __s, size_t __maxsize,
-			const char *__restrict __format,
-			const struct tm *__restrict __tp)
-			__THROW __nonnull((1, 3, 4));
+/* getdate functions */
 
-#ifdef __USE_XOPEN
-/* Parse S according to FORMAT and store binary time information in TP.
-   The return value is a pointer to the first unparsed character in S.  */
-extern char *strptime (const char *__restrict __s,
-		       const char *__restrict __fmt, struct tm *__tp)
-     __THROW;
-#endif
+#ifdef HAVE_GETDATE
+#if __XSI_VISIBLE >= 4
+#ifndef _REENT_ONLY
+#define getdate_err (*__getdate_err())
+int *__getdate_err (void);
 
-#ifdef __USE_XOPEN2K8
-/* Similar to the two functions above but take the information from
-   the provided locale and not the global locale.  */
-
-extern size_t strftime_l (char *__restrict __s, size_t __maxsize,
-			  const char *__restrict __format,
-			  const struct tm *__restrict __tp,
-			  locale_t __loc) __THROW;
-#endif
-
-#ifdef __USE_GNU
-extern char *strptime_l (const char *__restrict __s,
-			 const char *__restrict __fmt, struct tm *__tp,
-			 locale_t __loc) __THROW;
-#endif
-
-
-#ifndef __USE_TIME_BITS64
-/* Return the `struct tm' representation of *TIMER
-   in Universal Coordinated Time (aka Greenwich Mean Time).  */
-extern struct tm *gmtime (const time_t *__timer) __THROW;
-
-/* Return the `struct tm' representation
-   of *TIMER in the local timezone.  */
-extern struct tm *localtime (const time_t *__timer) __THROW;
-
-#else
-# ifdef __REDIRECT_NTH
-extern struct tm*__REDIRECT_NTH (gmtime, (const time_t *__timer), __gmtime64);
-extern struct tm *__REDIRECT_NTH (localtime, (const time_t *__timer),
-				  __localtime64);
-# else
-#  define gmtime __gmtime64
-#  define localtime __localtime64
-# endif
-#endif
-
-
-#if defined __USE_POSIX || __GLIBC_USE (ISOC2X)
-# ifndef __USE_TIME_BITS64
-/* Return the `struct tm' representation of *TIMER in UTC,
-   using *TP to store the result.  */
-extern struct tm *gmtime_r (const time_t *__restrict __timer,
-			    struct tm *__restrict __tp) __THROW;
-
-/* Return the `struct tm' representation of *TIMER in local time,
-   using *TP to store the result.  */
-extern struct tm *localtime_r (const time_t *__restrict __timer,
-			       struct tm *__restrict __tp) __THROW;
-# else
-#  ifdef __REDIRECT_NTH
-extern struct tm*__REDIRECT_NTH (gmtime_r, (const time_t *__restrict __timer,
-                                            struct tm *__restrict __tp),
-                                 __gmtime64_r);
-
-extern struct tm*__REDIRECT_NTH (localtime_r, (const time_t *__restrict __t,
-                                               struct tm *__restrict __tp),
-                                 __localtime64_r);
-#  else
-#   define gmtime_r __gmtime64_r
-#   define localtime_r __localtime_r
-#  endif
-# endif
-#endif	/* POSIX || C2X */
-
-/* Return a string of the form "Day Mon dd hh:mm:ss yyyy\n"
-   that is the representation of TP in this format.  */
-extern char *asctime (const struct tm *__tp) __THROW;
-
-/* Equivalent to `asctime (localtime (timer))'.  */
-#ifndef __USE_TIME_BITS64
-extern char *ctime (const time_t *__timer) __THROW;
-#else
-# ifdef __REDIRECT_NTH
-extern char *__REDIRECT_NTH (ctime, (const time_t *__timer), __ctime64);
-# else
-#  define ctime __ctime64
-# endif
-#endif
-
-#ifdef __USE_POSIX
-/* Reentrant versions of the above functions.  */
-
-/* Return in BUF a string of the form "Day Mon dd hh:mm:ss yyyy\n"
-   that is the representation of TP in this format.  */
-extern char *asctime_r (const struct tm *__restrict __tp,
-			char *__restrict __buf) __THROW;
-
-/* Equivalent to `asctime_r (localtime_r (timer, *TMP*), buf)'.  */
-#ifndef __USE_TIME_BITS64
-extern char *ctime_r (const time_t *__restrict __timer,
-		      char *__restrict __buf) __THROW;
-#else
-# ifdef __REDIRECT_NTH
-extern char *__REDIRECT_NTH (ctime_r, (const time_t *__restrict __timer,
-                                       char *__restrict __buf), __ctime64_r);
-# else
-#  define ctime_r __ctime64_r
-# endif
-#endif
-
-#endif	/* POSIX */
-
-
-/* Defined in localtime.c.  */
-extern char *__tzname[2];	/* Current time zone abbreviations.  */
-extern int __daylight;		/* If daylight-saving time is ever in use.  */
-extern long int __timezone;	/* Seconds west of UTC.  */
-
-
-#ifdef	__USE_POSIX
-/* Same as above.  */
-extern char *tzname[2];
-
-/* Set time conversion information from the TZ environment variable.
-   If TZ is not defined, a locale-dependent default is used.  */
-extern void tzset (void) __THROW;
-#endif
-
-#if defined __USE_MISC || defined __USE_XOPEN
-extern int daylight;
-extern long int timezone;
-#endif
-
-
-/* Nonzero if YEAR is a leap year (every 4 years,
-   except every 100th isn't, and every 400th is).  */
-#define __isleap(year)	\
-  ((year) % 4 == 0 && ((year) % 100 != 0 || (year) % 400 == 0))
-
-
-#if defined __USE_MISC || __GLIBC_USE (ISOC2X)
-# ifndef __USE_TIME_BITS64
-/* Like `mktime', but for TP represents Universal Time, not local time.  */
-extern time_t timegm (struct tm *__tp) __THROW;
-# else
-#  ifdef __REDIRECT_NTH
-extern time_t __REDIRECT_NTH (timegm, (struct tm *__tp), __timegm64);
-#  else
-#   define timegm __timegm64
-#  endif
-# endif
-#endif
-
-
-#ifdef __USE_MISC
-/* Miscellaneous functions many Unices inherited from the public domain
-   localtime package.  These are included only for compatibility.  */
-
-#ifndef __USE_TIME_BITS64
-/* Another name for `mktime'.  */
-extern time_t timelocal (struct tm *__tp) __THROW;
-#else
-# ifdef __REDIRECT_NTH
-extern time_t __REDIRECT_NTH (timelocal, (struct tm *__tp), __mktime64);
-# endif
-#endif
-
-/* Return the number of days in YEAR.  */
-extern int dysize (int __year) __THROW  __attribute__ ((__const__));
-#endif
-
-
-#ifdef __USE_POSIX199309
-# ifndef __USE_TIME_BITS64
-/* Pause execution for a number of nanoseconds.
-
-   This function is a cancellation point and therefore not marked with
-   __THROW.  */
-extern int nanosleep (const struct timespec *__requested_time,
-		      struct timespec *__remaining);
-
-/* Get resolution of clock CLOCK_ID.  */
-extern int clock_getres (clockid_t __clock_id, struct timespec *__res) __THROW;
-
-/* Get current value of clock CLOCK_ID and store it in TP.  */
-extern int clock_gettime (clockid_t __clock_id, struct timespec *__tp)
-     __THROW __nonnull((2));
-
-/* Set clock CLOCK_ID to value TP.  */
-extern int clock_settime (clockid_t __clock_id, const struct timespec *__tp)
-     __THROW __nonnull((2));
-# else
-#  ifdef __REDIRECT
-extern int __REDIRECT (nanosleep, (const struct timespec *__requested_time,
-                                   struct timespec *__remaining),
-                       __nanosleep64);
-extern int __REDIRECT_NTH (clock_getres, (clockid_t __clock_id,
-                                          struct timespec *__res),
-                           __clock_getres64);
-extern int __REDIRECT_NTH (clock_gettime, (clockid_t __clock_id, struct
-                                           timespec *__tp), __clock_gettime64)
-                           __nonnull((2));
-extern int __REDIRECT_NTH (clock_settime, (clockid_t __clock_id, const struct
-                                           timespec *__tp), __clock_settime64)
-                           __nonnull((2));
-#  else
-#   define nanosleep __nanosleep64
-#   define clock_getres __clock_getres64
-#   define clock_gettime __clock_gettime64
-#   define clock_settime __clock_settime64
-#  endif
-# endif
-
-
-# ifdef __USE_XOPEN2K
-/* High-resolution sleep with the specified clock.
-
-   This function is a cancellation point and therefore not marked with
-   __THROW.  */
-#  ifndef __USE_TIME_BITS64
-extern int clock_nanosleep (clockid_t __clock_id, int __flags,
-			    const struct timespec *__req,
-			    struct timespec *__rem);
-#  else
-#   ifdef __REDIRECT
-extern int __REDIRECT (clock_nanosleep, (clockid_t __clock_id, int __flags,
-                                         const struct timespec *__req,
-                                         struct timespec *__rem),
-                       __clock_nanosleep_time64);
-#   else
-#    define clock_nanosleep __clock_nanosleep_time64
-#   endif
-#  endif
-
-/* Return clock ID for CPU-time clock.  */
-extern int clock_getcpuclockid (pid_t __pid, clockid_t *__clock_id) __THROW;
-# endif
-
-
-/* Create new per-process timer using CLOCK_ID.  */
-extern int timer_create (clockid_t __clock_id,
-			 struct sigevent *__restrict __evp,
-			 timer_t *__restrict __timerid) __THROW;
-
-/* Delete timer TIMERID.  */
-extern int timer_delete (timer_t __timerid) __THROW;
-
-/* Set timer TIMERID to VALUE, returning old value in OVALUE.  */
-# ifndef __USE_TIME_BITS64
-extern int timer_settime (timer_t __timerid, int __flags,
-			  const struct itimerspec *__restrict __value,
-			  struct itimerspec *__restrict __ovalue) __THROW;
-
-/* Get current value of timer TIMERID and store it in VALUE.  */
-extern int timer_gettime (timer_t __timerid, struct itimerspec *__value)
-     __THROW;
-# else
-#  ifdef __REDIRECT_NTH
-extern int __REDIRECT_NTH (timer_settime, (timer_t __timerid, int __flags,
-     const struct itimerspec *__restrict __value,
-     struct itimerspec *__restrict __ovalue),
-                          __timer_settime64);
-
-extern int __REDIRECT_NTH (timer_gettime, (timer_t __timerid,
-                                           struct itimerspec *__value),
-                           __timer_gettime64);
-#  else
-#   define timer_settime __timer_settime64
-#   define timer_gettime __timer_gettime64
-#  endif
-# endif
-
-/* Get expiration overrun for timer TIMERID.  */
-extern int timer_getoverrun (timer_t __timerid) __THROW;
-#endif
-
-
-#ifdef __USE_ISOC11
-# ifndef __USE_TIME_BITS64
-/* Set TS to calendar time based in time base BASE.  */
-extern int timespec_get (struct timespec *__ts, int __base)
-     __THROW __nonnull ((1));
-# else
-#  ifdef __REDIRECT_NTH
-extern int __REDIRECT_NTH (timespec_get, (struct timespec *__ts, int __base),
-                           __timespec_get64) __nonnull ((1));
-#  else
-#   define timespec_get __timespec_get64
-#  endif
-# endif
-#endif
-
-
-#if __GLIBC_USE (ISOC2X)
-# ifndef __USE_TIME_BITS64
-/* Set TS to resolution of time base BASE.  */
-extern int timespec_getres (struct timespec *__ts, int __base)
-     __THROW;
-# else
-#  ifdef __REDIRECT_NTH
-extern int __REDIRECT_NTH (timespec_getres, (struct timespec *__ts,
-                                             int __base),
-                           __timespec_getres64);
-#  else
-#   define timespec_getres __timespec_getres64
-#  endif
-# endif
-#endif
-
-
-#ifdef __USE_XOPEN_EXTENDED
-/* Set to one of the following values to indicate an error.
+struct tm *	getdate (const char *);
+/* getdate_err is set to one of the following values to indicate the error.
      1  the DATEMSK environment variable is null or undefined,
      2  the template file cannot be opened for reading,
      3  failed to get file status information,
@@ -420,36 +119,195 @@ extern int __REDIRECT_NTH (timespec_getres, (struct timespec *__ts,
      5  an error is encountered while reading the template file,
      6  memory allication failed (not enough memory available),
      7  there is no line in the template that matches the input,
-     8  invalid input specification Example: February 31 or a time is
-	specified that can not be represented in a time_t (representing
-	the time in seconds since 00:00:00 UTC, January 1, 1970) */
-extern int getdate_err;
+     8  invalid input specification  */
+#endif /* !_REENT_ONLY */
+#endif /* __XSI_VISIBLE >= 4 */
 
-/* Parse the given string as a date specification and return a value
-   representing the value.  The templates from the file identified by
-   the environment variable DATEMSK are used.  In case of an error
-   `getdate_err' is set.
+#if __GNU_VISIBLE
+/* getdate_r returns the error code as above */
+int		getdate_r (const char *, struct tm *);
+#endif /* __GNU_VISIBLE */
+#endif /* HAVE_GETDATE */
 
-   This function is a possible cancellation point and therefore not
-   marked with __THROW.  */
-extern struct tm *getdate (const char *__string);
+/* defines for the opengroup specifications Derived from Issue 1 of the SVID.  */
+#if __SVID_VISIBLE || __XSI_VISIBLE
+extern __IMPORT long _timezone;
+extern __IMPORT int _daylight;
+#endif
+#if __POSIX_VISIBLE
+extern __IMPORT char *_tzname[2];
+
+/* POSIX defines the external tzname being defined in time.h */
+#ifndef tzname
+#define tzname _tzname
+#endif
+#endif /* __POSIX_VISIBLE */
+
+#ifdef __cplusplus
+}
 #endif
 
-#ifdef __USE_GNU
-/* Since `getdate' is not reentrant because of the use of `getdate_err'
-   and the static buffer to return the result in, we provide a thread-safe
-   variant.  The functionality is the same.  The result is returned in
-   the buffer pointed to by RESBUFP and in case of an error the return
-   value is != 0 with the same values as given above for `getdate_err'.
+#include <sys/features.h>
 
-   This function is not part of POSIX and therefore no official
-   cancellation point.  But due to similarity with an POSIX interface
-   or due to the implementation it is a cancellation point and
-   therefore not marked with __THROW.  */
-extern int getdate_r (const char *__restrict __string,
-		      struct tm *__restrict __resbufp);
+#ifdef __CYGWIN__
+#include <cygwin/time.h>
+#endif /*__CYGWIN__*/
+
+#if defined(_POSIX_TIMERS)
+
+#include <signal.h>
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-__END_DECLS
+/* Clocks, P1003.1b-1993, p. 263 */
 
-#endif /* time.h.  */
+int clock_settime (clockid_t clock_id, const struct timespec *tp);
+int clock_gettime (clockid_t clock_id, struct timespec *tp);
+int clock_getres (clockid_t clock_id, struct timespec *res);
+
+/* Create a Per-Process Timer, P1003.1b-1993, p. 264 */
+
+int timer_create (clockid_t clock_id,
+ 	struct sigevent *__restrict evp,
+	timer_t *__restrict timerid);
+
+/* Delete a Per_process Timer, P1003.1b-1993, p. 266 */
+
+int timer_delete (timer_t timerid);
+
+/* Per-Process Timers, P1003.1b-1993, p. 267 */
+
+int timer_settime (timer_t timerid, int flags,
+	const struct itimerspec *__restrict value,
+	struct itimerspec *__restrict ovalue);
+int timer_gettime (timer_t timerid, struct itimerspec *value);
+int timer_getoverrun (timer_t timerid);
+
+/* High Resolution Sleep, P1003.1b-1993, p. 269 */
+
+int nanosleep (const struct timespec  *rqtp, struct timespec *rmtp);
+
+#ifdef __cplusplus
+}
+#endif
+#endif /* _POSIX_TIMERS */
+
+#if defined(_POSIX_CLOCK_SELECTION)
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+int clock_nanosleep (clockid_t clock_id, int flags,
+	const struct timespec *rqtp, struct timespec *rmtp);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* _POSIX_CLOCK_SELECTION */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* CPU-time Clock Attributes, P1003.4b/D8, p. 54 */
+
+/* values for the clock enable attribute */
+
+#define CLOCK_ENABLED  1  /* clock is enabled, i.e. counting execution time */
+#define CLOCK_DISABLED 0  /* clock is disabled */
+
+/* values for the pthread cputime_clock_allowed attribute */
+
+#define CLOCK_ALLOWED    1 /* If a thread is created with this value a */
+                           /*   CPU-time clock attached to that thread */
+                           /*   shall be accessible. */
+#define CLOCK_DISALLOWED 0 /* If a thread is created with this value, the */
+                           /*   thread shall not have a CPU-time clock */
+                           /*   accessible. */
+
+/* Flag indicating time is "absolute" with respect to the clock
+   associated with a time.  Value 4 is historic. */
+
+#define TIMER_ABSTIME	4
+
+/* Manifest Constants, P1003.1b-1993, p. 262 */
+
+#if __GNU_VISIBLE
+#define CLOCK_REALTIME_COARSE	((clockid_t) 0)
+#endif
+
+#define CLOCK_REALTIME		((clockid_t) 1)
+
+/* Manifest Constants, P1003.4b/D8, p. 55 */
+
+#if defined(_POSIX_CPUTIME)
+
+/* When used in a clock or timer function call, this is interpreted as
+   the identifier of the CPU_time clock associated with the PROCESS
+   making the function call.  */
+
+#define CLOCK_PROCESS_CPUTIME_ID ((clockid_t) 2)
+
+#endif
+
+#if defined(_POSIX_THREAD_CPUTIME)
+
+/*  When used in a clock or timer function call, this is interpreted as
+    the identifier of the CPU_time clock associated with the THREAD
+    making the function call.  */
+
+#define CLOCK_THREAD_CPUTIME_ID	((clockid_t) 3)
+
+#endif
+
+#if defined(_POSIX_MONOTONIC_CLOCK)
+
+/*  The identifier for the system-wide monotonic clock, which is defined
+ *  as a clock whose value cannot be set via clock_settime() and which
+ *  cannot have backward clock jumps. */
+
+#define CLOCK_MONOTONIC		((clockid_t) 4)
+
+#endif
+
+#if __GNU_VISIBLE
+
+#define CLOCK_MONOTONIC_RAW	((clockid_t) 5)
+
+#define CLOCK_MONOTONIC_COARSE	((clockid_t) 6)
+
+#define CLOCK_BOOTTIME		((clockid_t) 7)
+
+#define CLOCK_REALTIME_ALARM	((clockid_t) 8)
+
+#define CLOCK_BOOTTIME_ALARM	((clockid_t) 9)
+
+#endif
+
+#if defined(_POSIX_CPUTIME)
+
+/* Accessing a Process CPU-time CLock, P1003.4b/D8, p. 55 */
+
+int clock_getcpuclockid (pid_t pid, clockid_t *clock_id);
+
+#endif /* _POSIX_CPUTIME */
+
+#if defined(_POSIX_CPUTIME) || defined(_POSIX_THREAD_CPUTIME)
+
+/* CPU-time Clock Attribute Access, P1003.4b/D8, p. 56 */
+
+int clock_setenable_attr (clockid_t clock_id, int attr);
+int clock_getenable_attr (clockid_t clock_id, int *attr);
+
+#endif /* _POSIX_CPUTIME or _POSIX_THREAD_CPUTIME */
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* _TIME_H_ */
+

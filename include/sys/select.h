@@ -1,155 +1,94 @@
-/* `fd_set' type and related macros, and `select'/`pselect' declarations.
-   Copyright (C) 1996-2021 Free Software Foundation, Inc.
-   This file is part of the GNU C Library.
-
-   The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Lesser General Public
-   License as published by the Free Software Foundation; either
-   version 2.1 of the License, or (at your option) any later version.
-
-   The GNU C Library is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Lesser General Public License for more details.
-
-   You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, see
-   <https://www.gnu.org/licenses/>.  */
-
-/*	POSIX 1003.1g: 6.2 Select from File Descriptor Sets <sys/select.h>  */
-
 #ifndef _SYS_SELECT_H
-#define _SYS_SELECT_H	1
+#define _SYS_SELECT_H
 
-#include <features.h>
+/* We don't define fd_set and friends if we are compiling POSIX
+   source, or if we have included (or may include as indicated
+   by __USE_W32_SOCKETS) the W32api winsock[2].h header which
+   defines Windows versions of them.   Note that a program which
+   includes the W32api winsock[2].h header must know what it is doing;
+   it must not call the Cygwin select function.
+*/
+# if !(defined (_WINSOCK_H) || defined (_WINSOCKAPI_) || defined (__USE_W32_SOCKETS))
 
-/* Get definition of needed basic types.  */
-#include <bits/types.h>
+#include <sys/cdefs.h>
+#include <sys/_sigset.h>
+#include <sys/_timeval.h>
+#include <sys/timespec.h>
 
-/* Get __FD_* definitions.  */
-#include <bits/select.h>
-
-/* Get sigset_t.  */
-#include <bits/types/sigset_t.h>
-
-/* Get definition of timer specification structures.  */
-#include <bits/types/time_t.h>
-#include <bits/types/struct_timeval.h>
-#ifdef __USE_XOPEN2K
-# include <bits/types/struct_timespec.h>
+#if !defined(_SIGSET_T_DECLARED)
+#define	_SIGSET_T_DECLARED
+typedef	__sigset_t	sigset_t;
 #endif
 
-#ifndef __suseconds_t_defined
-typedef __suseconds_t suseconds_t;
-# define __suseconds_t_defined
+#  define _SYS_TYPES_FD_SET
+/*
+ * Select uses bit masks of file descriptors in longs.
+ * These macros manipulate such bit fields (the filesystem macros use chars).
+ * FD_SETSIZE may be defined by the user, but the default here
+ * should be enough for most uses.
+ */
+#ifndef FD_SETSIZE
+# ifdef __CYGWIN__
+#  define FD_SETSIZE	1024
+# else
+#  define FD_SETSIZE	64
+# endif
 #endif
 
-
-/* The fd_set member is required to be an array of longs.  */
-typedef long int __fd_mask;
-
-/* Some versions of <linux/posix_types.h> define this macros.  */
-#undef	__NFDBITS
-/* It's easier to assume 8-bit bytes than to get CHAR_BIT.  */
-#define __NFDBITS	(8 * (int) sizeof (__fd_mask))
-#define	__FD_ELT(d)	((d) / __NFDBITS)
-#define	__FD_MASK(d)	((__fd_mask) (1UL << ((d) % __NFDBITS)))
-
-/* fd_set for select and pselect.  */
-typedef struct
-  {
-    /* XPG4.2 requires this member name.  Otherwise avoid the name
-       from the global namespace.  */
-#ifdef __USE_XOPEN
-    __fd_mask fds_bits[__FD_SETSIZE / __NFDBITS];
-# define __FDS_BITS(set) ((set)->fds_bits)
-#else
-    __fd_mask __fds_bits[__FD_SETSIZE / __NFDBITS];
-# define __FDS_BITS(set) ((set)->__fds_bits)
-#endif
-  } fd_set;
-
-/* Maximum number of file descriptors in `fd_set'.  */
-#define	FD_SETSIZE		__FD_SETSIZE
-
-#ifdef __USE_MISC
-/* Sometimes the fd_set member is assumed to have this type.  */
-typedef __fd_mask fd_mask;
-
-/* Number of bits per word of `fd_set' (some code assumes this is 32).  */
-# define NFDBITS		__NFDBITS
+typedef unsigned long	__fd_mask;
+#if __BSD_VISIBLE
+typedef __fd_mask	fd_mask;
 #endif
 
+#define _NFDBITS	((int)sizeof(__fd_mask) * 8) /* bits per mask */
+#if __BSD_VISIBLE
+#define NFDBITS		_NFDBITS
+#endif
 
-/* Access macros for `fd_set'.  */
-#define	FD_SET(fd, fdsetp)	__FD_SET (fd, fdsetp)
-#define	FD_CLR(fd, fdsetp)	__FD_CLR (fd, fdsetp)
-#define	FD_ISSET(fd, fdsetp)	__FD_ISSET (fd, fdsetp)
-#define	FD_ZERO(fdsetp)		__FD_ZERO (fdsetp)
+#ifndef	_howmany
+#define	_howmany(x,y)	(((x) + ((y) - 1)) / (y))
+#endif
 
+typedef	struct fd_set {
+	__fd_mask	__fds_bits[_howmany(FD_SETSIZE, _NFDBITS)];
+} fd_set;
+#if __BSD_VISIBLE
+#define fds_bits	__fds_bits
+#endif
+
+#define __fdset_mask(n)	((__fd_mask)1 << ((n) % _NFDBITS))
+#define FD_CLR(n, p)	((p)->__fds_bits[(n)/_NFDBITS] &= ~__fdset_mask(n))
+#if __BSD_VISIBLE
+#define FD_COPY(f, t)	(void)(*(t) = *(f))
+#endif
+#define FD_ISSET(n, p)	(((p)->__fds_bits[(n)/_NFDBITS] & __fdset_mask(n)) != 0)
+#define FD_SET(n, p)	((p)->__fds_bits[(n)/_NFDBITS] |= __fdset_mask(n))
+#define FD_ZERO(p) do {					\
+        fd_set *_p;					\
+        __size_t _n;					\
+							\
+        _p = (p);					\
+        _n = _howmany(FD_SETSIZE, _NFDBITS);		\
+        while (_n > 0)					\
+                _p->__fds_bits[--_n] = 0;		\
+} while (0)
+
+#if !defined (__INSIDE_CYGWIN_NET__)
 
 __BEGIN_DECLS
 
-/* Check the first NFDS descriptors each in READFDS (if not NULL) for read
-   readiness, in WRITEFDS (if not NULL) for write readiness, and in EXCEPTFDS
-   (if not NULL) for exceptional conditions.  If TIMEOUT is not NULL, time out
-   after waiting the interval specified therein.  Returns the number of ready
-   descriptors, or -1 for errors.
-
-   This function is a cancellation point and therefore not marked with
-   __THROW.  */
-#ifndef __USE_TIME_BITS64
-extern int select (int __nfds, fd_set *__restrict __readfds,
-		   fd_set *__restrict __writefds,
-		   fd_set *__restrict __exceptfds,
-		   struct timeval *__restrict __timeout);
-#else
-# ifdef __REDIRECT
-extern int __REDIRECT (select,
-                       (int __nfds, fd_set *__restrict __readfds,
-                        fd_set *__restrict __writefds,
-                        fd_set *__restrict __exceptfds,
-                        struct timeval *__restrict __timeout),
-                       __select64);
-# else
-#  define select __select64
-# endif
-#endif
-
-#ifdef __USE_XOPEN2K
-/* Same as above only that the TIMEOUT value is given with higher
-   resolution and a sigmask which is been set temporarily.  This version
-   should be used.
-
-   This function is a cancellation point and therefore not marked with
-   __THROW.  */
-# ifndef __USE_TIME_BITS64
-extern int pselect (int __nfds, fd_set *__restrict __readfds,
-		    fd_set *__restrict __writefds,
-		    fd_set *__restrict __exceptfds,
-		    const struct timespec *__restrict __timeout,
-		    const __sigset_t *__restrict __sigmask);
-# else
-#  ifdef __REDIRECT
-extern int __REDIRECT (pselect,
-                       (int __nfds, fd_set *__restrict __readfds,
-                        fd_set *__restrict __writefds,
-                        fd_set *__restrict __exceptfds,
-                        const struct timespec *__restrict __timeout,
-                        const __sigset_t *__restrict __sigmask),
-                       __pselect64);
-#  else
-#   define pselect __pselect64
-#  endif
-# endif
-#endif
-
-
-/* Define some inlines helping to catch common problems.  */
-#if __USE_FORTIFY_LEVEL > 0 && defined __GNUC__
-# include <bits/select2.h>
+int select __P ((int __n, fd_set *__readfds, fd_set *__writefds,
+		 fd_set *__exceptfds, struct timeval *__timeout));
+#if __POSIX_VISIBLE >= 200112
+int pselect __P ((int __n, fd_set *__readfds, fd_set *__writefds,
+		  fd_set *__exceptfds, const struct timespec *__timeout,
+		  const sigset_t *__set));
 #endif
 
 __END_DECLS
+
+#endif /* !__INSIDE_CYGWIN_NET__ */
+
+#endif /* !(_WINSOCK_H || _WINSOCKAPI_ || __USE_W32_SOCKETS) */
 
 #endif /* sys/select.h */

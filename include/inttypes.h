@@ -1,417 +1,345 @@
-/* Copyright (C) 1997-2024 Free Software Foundation, Inc.
-   This file is part of the GNU C Library.
-
-   The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Lesser General Public
-   License as published by the Free Software Foundation; either
-   version 2.1 of the License, or (at your option) any later version.
-
-   The GNU C Library is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Lesser General Public License for more details.
-
-   You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, see
-   <https://www.gnu.org/licenses/>.  */
-
 /*
- *	ISO C99: 7.8 Format conversion of integer types	<inttypes.h>
+ * Copyright (c) 2004, 2005 by
+ * Ralf Corsepius, Ulm/Germany. All rights reserved.
+ *
+ * Permission to use, copy, modify, and distribute this software
+ * is freely granted, provided that this notice is preserved.
+ */
+
+/**
+ *  @file  inttypes.h
  */
 
 #ifndef _INTTYPES_H
-#define _INTTYPES_H	1
+#define _INTTYPES_H
 
-#include <features.h>
-/* Get the type definitions.  */
+#include <newlib.h>
+#include <sys/config.h>
+#include <sys/_intsup.h>
+#include "_ansi.h"
 #include <stdint.h>
+#define __need_wchar_t
+#include <stddef.h>
 
-/* Get a definition for wchar_t.  But we must not define wchar_t itself.  */
-#ifndef ____gwchar_t_defined
-# ifdef __cplusplus
-#  define __gwchar_t wchar_t
-# elif defined __WCHAR_TYPE__
-typedef __WCHAR_TYPE__ __gwchar_t;
-# else
-#  define __need_wchar_t
-#  include <stddef.h>
-typedef wchar_t __gwchar_t;
-# endif
-# define ____gwchar_t_defined	1
+#if __BSD_VISIBLE
+#include <sys/_locale.h>
 #endif
 
-# if __WORDSIZE == 64
-#  define __PRI64_PREFIX	"l"
-#  define __PRIPTR_PREFIX	"l"
-# else
-#  define __PRI64_PREFIX	"ll"
-#  define __PRIPTR_PREFIX
-# endif
+#define __STRINGIFY(a) #a
 
-/* Macros for printing format specifiers.  */
+/* 8-bit types */
+#define __PRI8(x) __INT8 __STRINGIFY(x)
+#define __PRI8LEAST(x) __LEAST8 __STRINGIFY(x)
+#define __PRI8FAST(x) __FAST8 __STRINGIFY(x)
 
-/* Decimal notation.  */
-# define PRId8		"d"
-# define PRId16		"d"
-# define PRId32		"d"
-# define PRId64		__PRI64_PREFIX "d"
+/* NOTICE: scanning 8-bit types requires use of the hh specifier
+ * which is only supported on newlib platforms that
+ * are built with C99 I/O format support enabled.  If the flag in
+ * newlib.h hasn't been set during configuration to indicate this, the 8-bit
+ * scanning format macros are disabled here as they result in undefined
+ * behaviour which can include memory overwrite.  Overriding the flag after the
+ * library has been built is not recommended as it will expose the underlying
+ * undefined behaviour.
+ */
 
-# define PRIdLEAST8	"d"
-# define PRIdLEAST16	"d"
-# define PRIdLEAST32	"d"
-# define PRIdLEAST64	__PRI64_PREFIX "d"
-
-# define PRIdFAST8	"d"
-# define PRIdFAST16	__PRIPTR_PREFIX "d"
-# define PRIdFAST32	__PRIPTR_PREFIX "d"
-# define PRIdFAST64	__PRI64_PREFIX "d"
+#if defined(_WANT_IO_C99_FORMATS)
+  #define __SCN8(x) __INT8 __STRINGIFY(x)
+	#define __SCN8LEAST(x) __LEAST8 __STRINGIFY(x)
+	#define __SCN8FAST(x) __FAST8 __STRINGIFY(x)
+#endif /* _WANT_IO_C99_FORMATS */
 
 
-# define PRIi8		"i"
-# define PRIi16		"i"
-# define PRIi32		"i"
-# define PRIi64		__PRI64_PREFIX "i"
+#define PRId8		__PRI8(d)
+#define PRIi8		__PRI8(i)
+#define PRIo8		__PRI8(o)
+#define PRIu8		__PRI8(u)
+#define PRIx8		__PRI8(x)
+#define PRIX8		__PRI8(X)
 
-# define PRIiLEAST8	"i"
-# define PRIiLEAST16	"i"
-# define PRIiLEAST32	"i"
-# define PRIiLEAST64	__PRI64_PREFIX "i"
+/* Macros below are only enabled for a newlib built with C99 I/O format support. */
+#if defined(_WANT_IO_C99_FORMATS)
 
-# define PRIiFAST8	"i"
-# define PRIiFAST16	__PRIPTR_PREFIX "i"
-# define PRIiFAST32	__PRIPTR_PREFIX "i"
-# define PRIiFAST64	__PRI64_PREFIX "i"
+#define SCNd8		__SCN8(d)
+#define SCNi8		__SCN8(i)
+#define SCNo8		__SCN8(o)
+#define SCNu8		__SCN8(u)
+#define SCNx8		__SCN8(x)
 
-/* Octal notation.  */
-# define PRIo8		"o"
-# define PRIo16		"o"
-# define PRIo32		"o"
-# define PRIo64		__PRI64_PREFIX "o"
-
-# define PRIoLEAST8	"o"
-# define PRIoLEAST16	"o"
-# define PRIoLEAST32	"o"
-# define PRIoLEAST64	__PRI64_PREFIX "o"
-
-# define PRIoFAST8	"o"
-# define PRIoFAST16	__PRIPTR_PREFIX "o"
-# define PRIoFAST32	__PRIPTR_PREFIX "o"
-# define PRIoFAST64	__PRI64_PREFIX "o"
-
-/* Unsigned integers.  */
-# define PRIu8		"u"
-# define PRIu16		"u"
-# define PRIu32		"u"
-# define PRIu64		__PRI64_PREFIX "u"
-
-# define PRIuLEAST8	"u"
-# define PRIuLEAST16	"u"
-# define PRIuLEAST32	"u"
-# define PRIuLEAST64	__PRI64_PREFIX "u"
-
-# define PRIuFAST8	"u"
-# define PRIuFAST16	__PRIPTR_PREFIX "u"
-# define PRIuFAST32	__PRIPTR_PREFIX "u"
-# define PRIuFAST64	__PRI64_PREFIX "u"
-
-/* lowercase hexadecimal notation.  */
-# define PRIx8		"x"
-# define PRIx16		"x"
-# define PRIx32		"x"
-# define PRIx64		__PRI64_PREFIX "x"
-
-# define PRIxLEAST8	"x"
-# define PRIxLEAST16	"x"
-# define PRIxLEAST32	"x"
-# define PRIxLEAST64	__PRI64_PREFIX "x"
-
-# define PRIxFAST8	"x"
-# define PRIxFAST16	__PRIPTR_PREFIX "x"
-# define PRIxFAST32	__PRIPTR_PREFIX "x"
-# define PRIxFAST64	__PRI64_PREFIX "x"
-
-/* UPPERCASE hexadecimal notation.  */
-# define PRIX8		"X"
-# define PRIX16		"X"
-# define PRIX32		"X"
-# define PRIX64		__PRI64_PREFIX "X"
-
-# define PRIXLEAST8	"X"
-# define PRIXLEAST16	"X"
-# define PRIXLEAST32	"X"
-# define PRIXLEAST64	__PRI64_PREFIX "X"
-
-# define PRIXFAST8	"X"
-# define PRIXFAST16	__PRIPTR_PREFIX "X"
-# define PRIXFAST32	__PRIPTR_PREFIX "X"
-# define PRIXFAST64	__PRI64_PREFIX "X"
+#endif /* _WANT_IO_C99_FORMATS */
 
 
-/* Macros for printing `intmax_t' and `uintmax_t'.  */
-# define PRIdMAX	__PRI64_PREFIX "d"
-# define PRIiMAX	__PRI64_PREFIX "i"
-# define PRIoMAX	__PRI64_PREFIX "o"
-# define PRIuMAX	__PRI64_PREFIX "u"
-# define PRIxMAX	__PRI64_PREFIX "x"
-# define PRIXMAX	__PRI64_PREFIX "X"
+#define PRIdLEAST8	__PRI8LEAST(d)
+#define PRIiLEAST8	__PRI8LEAST(i)
+#define PRIoLEAST8	__PRI8LEAST(o)
+#define PRIuLEAST8	__PRI8LEAST(u)
+#define PRIxLEAST8	__PRI8LEAST(x)
+#define PRIXLEAST8	__PRI8LEAST(X)
+
+/* Macros below are only enabled for a newlib built with C99 I/O format support. */
+#if defined(_WANT_IO_C99_FORMATS)
+
+  #define SCNdLEAST8	__SCN8LEAST(d)
+  #define SCNiLEAST8	__SCN8LEAST(i)
+  #define SCNoLEAST8	__SCN8LEAST(o)
+  #define SCNuLEAST8	__SCN8LEAST(u)
+  #define SCNxLEAST8	__SCN8LEAST(x)
+
+#endif /* _WANT_IO_C99_FORMATS */
+
+#define PRIdFAST8	__PRI8FAST(d)
+#define PRIiFAST8	__PRI8FAST(i)
+#define PRIoFAST8	__PRI8FAST(o)
+#define PRIuFAST8	__PRI8FAST(u)
+#define PRIxFAST8	__PRI8FAST(x)
+#define PRIXFAST8	__PRI8FAST(X)
+
+/* Macros below are only enabled for a newlib built with C99 I/O format support. */
+#if defined(_WANT_IO_C99_FORMATS)
+
+  #define SCNdFAST8	__SCN8FAST(d)
+  #define SCNiFAST8	__SCN8FAST(i)
+  #define SCNoFAST8	__SCN8FAST(o)
+  #define SCNuFAST8	__SCN8FAST(u)
+  #define SCNxFAST8	__SCN8FAST(x)
+
+#endif /* _WANT_IO_C99_FORMATS */
+
+/* 16-bit types */
+#define __PRI16(x) __INT16 __STRINGIFY(x)
+#define __PRI16LEAST(x) __LEAST16 __STRINGIFY(x)
+#define __PRI16FAST(x) __FAST16 __STRINGIFY(x)
+#define __SCN16(x) __INT16 __STRINGIFY(x)
+#define __SCN16LEAST(x) __LEAST16 __STRINGIFY(x)
+#define __SCN16FAST(x) __FAST16 __STRINGIFY(x)
 
 
-/* Macros for printing `intptr_t' and `uintptr_t'.  */
-# define PRIdPTR	__PRIPTR_PREFIX "d"
-# define PRIiPTR	__PRIPTR_PREFIX "i"
-# define PRIoPTR	__PRIPTR_PREFIX "o"
-# define PRIuPTR	__PRIPTR_PREFIX "u"
-# define PRIxPTR	__PRIPTR_PREFIX "x"
-# define PRIXPTR	__PRIPTR_PREFIX "X"
+#define PRId16		__PRI16(d)
+#define PRIi16		__PRI16(i)
+#define PRIo16		__PRI16(o)
+#define PRIu16		__PRI16(u)
+#define PRIx16		__PRI16(x)
+#define PRIX16		__PRI16(X)
 
-/* Binary notation.  */
-# if __GLIBC_USE (ISOC2X)
-#  define PRIb8		"b"
-#  define PRIb16	"b"
-#  define PRIb32	"b"
-#  define PRIb64	__PRI64_PREFIX "b"
-
-#  define PRIbLEAST8	"b"
-#  define PRIbLEAST16	"b"
-#  define PRIbLEAST32	"b"
-#  define PRIbLEAST64	__PRI64_PREFIX "b"
-
-#  define PRIbFAST8	"b"
-#  define PRIbFAST16	__PRIPTR_PREFIX "b"
-#  define PRIbFAST32	__PRIPTR_PREFIX "b"
-#  define PRIbFAST64	__PRI64_PREFIX "b"
-
-#  define PRIbMAX	__PRI64_PREFIX "b"
-#  define PRIbPTR	__PRIPTR_PREFIX "b"
-
-#  define PRIB8		"B"
-#  define PRIB16	"B"
-#  define PRIB32	"B"
-#  define PRIB64	__PRI64_PREFIX "B"
-
-#  define PRIBLEAST8	"B"
-#  define PRIBLEAST16	"B"
-#  define PRIBLEAST32	"B"
-#  define PRIBLEAST64	__PRI64_PREFIX "B"
-
-#  define PRIBFAST8	"B"
-#  define PRIBFAST16	__PRIPTR_PREFIX "B"
-#  define PRIBFAST32	__PRIPTR_PREFIX "B"
-#  define PRIBFAST64	__PRI64_PREFIX "B"
-
-#  define PRIBMAX	__PRI64_PREFIX "B"
-#  define PRIBPTR	__PRIPTR_PREFIX "B"
-# endif
+#define SCNd16		__SCN16(d)
+#define SCNi16		__SCN16(i)
+#define SCNo16		__SCN16(o)
+#define SCNu16		__SCN16(u)
+#define SCNx16		__SCN16(x)
 
 
-/* Macros for scanning format specifiers.  */
+#define PRIdLEAST16	__PRI16LEAST(d)
+#define PRIiLEAST16	__PRI16LEAST(i)
+#define PRIoLEAST16	__PRI16LEAST(o)
+#define PRIuLEAST16	__PRI16LEAST(u)
+#define PRIxLEAST16	__PRI16LEAST(x)
+#define PRIXLEAST16	__PRI16LEAST(X)
 
-/* Signed decimal notation.  */
-# define SCNd8		"hhd"
-# define SCNd16		"hd"
-# define SCNd32		"d"
-# define SCNd64		__PRI64_PREFIX "d"
-
-# define SCNdLEAST8	"hhd"
-# define SCNdLEAST16	"hd"
-# define SCNdLEAST32	"d"
-# define SCNdLEAST64	__PRI64_PREFIX "d"
-
-# define SCNdFAST8	"hhd"
-# define SCNdFAST16	__PRIPTR_PREFIX "d"
-# define SCNdFAST32	__PRIPTR_PREFIX "d"
-# define SCNdFAST64	__PRI64_PREFIX "d"
-
-/* Signed decimal notation.  */
-# define SCNi8		"hhi"
-# define SCNi16		"hi"
-# define SCNi32		"i"
-# define SCNi64		__PRI64_PREFIX "i"
-
-# define SCNiLEAST8	"hhi"
-# define SCNiLEAST16	"hi"
-# define SCNiLEAST32	"i"
-# define SCNiLEAST64	__PRI64_PREFIX "i"
-
-# define SCNiFAST8	"hhi"
-# define SCNiFAST16	__PRIPTR_PREFIX "i"
-# define SCNiFAST32	__PRIPTR_PREFIX "i"
-# define SCNiFAST64	__PRI64_PREFIX "i"
-
-/* Unsigned decimal notation.  */
-# define SCNu8		"hhu"
-# define SCNu16		"hu"
-# define SCNu32		"u"
-# define SCNu64		__PRI64_PREFIX "u"
-
-# define SCNuLEAST8	"hhu"
-# define SCNuLEAST16	"hu"
-# define SCNuLEAST32	"u"
-# define SCNuLEAST64	__PRI64_PREFIX "u"
-
-# define SCNuFAST8	"hhu"
-# define SCNuFAST16	__PRIPTR_PREFIX "u"
-# define SCNuFAST32	__PRIPTR_PREFIX "u"
-# define SCNuFAST64	__PRI64_PREFIX "u"
-
-/* Octal notation.  */
-# define SCNo8		"hho"
-# define SCNo16		"ho"
-# define SCNo32		"o"
-# define SCNo64		__PRI64_PREFIX "o"
-
-# define SCNoLEAST8	"hho"
-# define SCNoLEAST16	"ho"
-# define SCNoLEAST32	"o"
-# define SCNoLEAST64	__PRI64_PREFIX "o"
-
-# define SCNoFAST8	"hho"
-# define SCNoFAST16	__PRIPTR_PREFIX "o"
-# define SCNoFAST32	__PRIPTR_PREFIX "o"
-# define SCNoFAST64	__PRI64_PREFIX "o"
-
-/* Hexadecimal notation.  */
-# define SCNx8		"hhx"
-# define SCNx16		"hx"
-# define SCNx32		"x"
-# define SCNx64		__PRI64_PREFIX "x"
-
-# define SCNxLEAST8	"hhx"
-# define SCNxLEAST16	"hx"
-# define SCNxLEAST32	"x"
-# define SCNxLEAST64	__PRI64_PREFIX "x"
-
-# define SCNxFAST8	"hhx"
-# define SCNxFAST16	__PRIPTR_PREFIX "x"
-# define SCNxFAST32	__PRIPTR_PREFIX "x"
-# define SCNxFAST64	__PRI64_PREFIX "x"
+#define SCNdLEAST16	__SCN16LEAST(d)
+#define SCNiLEAST16	__SCN16LEAST(i)
+#define SCNoLEAST16	__SCN16LEAST(o)
+#define SCNuLEAST16	__SCN16LEAST(u)
+#define SCNxLEAST16	__SCN16LEAST(x)
 
 
-/* Macros for scanning `intmax_t' and `uintmax_t'.  */
-# define SCNdMAX	__PRI64_PREFIX "d"
-# define SCNiMAX	__PRI64_PREFIX "i"
-# define SCNoMAX	__PRI64_PREFIX "o"
-# define SCNuMAX	__PRI64_PREFIX "u"
-# define SCNxMAX	__PRI64_PREFIX "x"
+#define PRIdFAST16	__PRI16FAST(d)
+#define PRIiFAST16	__PRI16FAST(i)
+#define PRIoFAST16	__PRI16FAST(o)
+#define PRIuFAST16	__PRI16FAST(u)
+#define PRIxFAST16	__PRI16FAST(x)
+#define PRIXFAST16	__PRI16FAST(X)
 
-/* Macros for scanning `intptr_t' and `uintptr_t'.  */
-# define SCNdPTR	__PRIPTR_PREFIX "d"
-# define SCNiPTR	__PRIPTR_PREFIX "i"
-# define SCNoPTR	__PRIPTR_PREFIX "o"
-# define SCNuPTR	__PRIPTR_PREFIX "u"
-# define SCNxPTR	__PRIPTR_PREFIX "x"
+#define SCNdFAST16	__SCN16FAST(d)
+#define SCNiFAST16	__SCN16FAST(i)
+#define SCNoFAST16	__SCN16FAST(o)
+#define SCNuFAST16	__SCN16FAST(u)
+#define SCNxFAST16	__SCN16FAST(x)
 
+/* 32-bit types */
+#define __PRI32(x) __INT32 __STRINGIFY(x)
+#define __SCN32(x) __INT32 __STRINGIFY(x)
+#define __PRI32LEAST(x) __LEAST32 __STRINGIFY(x)
+#define __SCN32LEAST(x) __LEAST32 __STRINGIFY(x)
+#define __PRI32FAST(x) __FAST32 __STRINGIFY(x)
+#define __SCN32FAST(x) __FAST32 __STRINGIFY(x)
 
-/* Binary notation.  */
-# if __GLIBC_USE (ISOC2X)
-#  define SCNb8		"hhb"
-#  define SCNb16	"hb"
-#  define SCNb32	"b"
-#  define SCNb64	__PRI64_PREFIX "b"
+#define PRId32		__PRI32(d)
+#define PRIi32		__PRI32(i)
+#define PRIo32		__PRI32(o)
+#define PRIu32		__PRI32(u)
+#define PRIx32		__PRI32(x)
+#define PRIX32		__PRI32(X)
 
-#  define SCNbLEAST8	"hhb"
-#  define SCNbLEAST16	"hb"
-#  define SCNbLEAST32	"b"
-#  define SCNbLEAST64	__PRI64_PREFIX "b"
-
-#  define SCNbFAST8	"hhb"
-#  define SCNbFAST16	__PRIPTR_PREFIX "b"
-#  define SCNbFAST32	__PRIPTR_PREFIX "b"
-#  define SCNbFAST64	__PRI64_PREFIX "b"
-
-#  define SCNbMAX	__PRI64_PREFIX "b"
-#  define SCNbPTR	__PRIPTR_PREFIX "b"
-# endif
+#define SCNd32		__SCN32(d)
+#define SCNi32		__SCN32(i)
+#define SCNo32		__SCN32(o)
+#define SCNu32		__SCN32(u)
+#define SCNx32		__SCN32(x)
 
 
-__BEGIN_DECLS
+#define PRIdLEAST32	__PRI32LEAST(d)
+#define PRIiLEAST32	__PRI32LEAST(i)
+#define PRIoLEAST32	__PRI32LEAST(o)
+#define PRIuLEAST32	__PRI32LEAST(u)
+#define PRIxLEAST32	__PRI32LEAST(x)
+#define PRIXLEAST32	__PRI32LEAST(X)
 
-#if __WORDSIZE == 64
+#define SCNdLEAST32	__SCN32LEAST(d)
+#define SCNiLEAST32	__SCN32LEAST(i)
+#define SCNoLEAST32	__SCN32LEAST(o)
+#define SCNuLEAST32	__SCN32LEAST(u)
+#define SCNxLEAST32	__SCN32LEAST(x)
 
-/* We have to define the `uintmax_t' type using `ldiv_t'.  */
-typedef struct
-  {
-    long int quot;		/* Quotient.  */
-    long int rem;		/* Remainder.  */
-  } imaxdiv_t;
 
+#define PRIdFAST32	__PRI32FAST(d)
+#define PRIiFAST32	__PRI32FAST(i)
+#define PRIoFAST32	__PRI32FAST(o)
+#define PRIuFAST32	__PRI32FAST(u)
+#define PRIxFAST32	__PRI32FAST(x)
+#define PRIXFAST32	__PRI32FAST(X)
+
+#define SCNdFAST32	__SCN32FAST(d)
+#define SCNiFAST32	__SCN32FAST(i)
+#define SCNoFAST32	__SCN32FAST(o)
+#define SCNuFAST32	__SCN32FAST(u)
+#define SCNxFAST32	__SCN32FAST(x)
+
+
+/* 64-bit types */
+#define __PRI64(x) __INT64 __STRINGIFY(x)
+#define __SCN64(x) __INT64 __STRINGIFY(x)
+
+#define __PRI64LEAST(x) __LEAST64 __STRINGIFY(x)
+#define __SCN64LEAST(x) __LEAST64 __STRINGIFY(x)
+#define __PRI64FAST(x) __FAST64 __STRINGIFY(x)
+#define __SCN64FAST(x) __FAST64 __STRINGIFY(x)
+
+#if __int64_t_defined
+#define PRId64		__PRI64(d)
+#define PRIi64		__PRI64(i)
+#define PRIo64		__PRI64(o)
+#define PRIu64		__PRI64(u)
+#define PRIx64		__PRI64(x)
+#define PRIX64		__PRI64(X)
+
+#define SCNd64		__SCN64(d)
+#define SCNi64		__SCN64(i)
+#define SCNo64		__SCN64(o)
+#define SCNu64		__SCN64(u)
+#define SCNx64		__SCN64(x)
+#endif
+
+#if __int_least64_t_defined
+#define PRIdLEAST64	__PRI64LEAST(d)
+#define PRIiLEAST64	__PRI64LEAST(i)
+#define PRIoLEAST64	__PRI64LEAST(o)
+#define PRIuLEAST64	__PRI64LEAST(u)
+#define PRIxLEAST64	__PRI64LEAST(x)
+#define PRIXLEAST64	__PRI64LEAST(X)
+
+#define SCNdLEAST64	__SCN64LEAST(d)
+#define SCNiLEAST64	__SCN64LEAST(i)
+#define SCNoLEAST64	__SCN64LEAST(o)
+#define SCNuLEAST64	__SCN64LEAST(u)
+#define SCNxLEAST64	__SCN64LEAST(x)
+#endif
+
+#if __int_fast64_t_defined
+#define PRIdFAST64	__PRI64FAST(d)
+#define PRIiFAST64	__PRI64FAST(i)
+#define PRIoFAST64	__PRI64FAST(o)
+#define PRIuFAST64	__PRI64FAST(u)
+#define PRIxFAST64	__PRI64FAST(x)
+#define PRIXFAST64	__PRI64FAST(X)
+
+#define SCNdFAST64	__SCN64FAST(d)
+#define SCNiFAST64	__SCN64FAST(i)
+#define SCNoFAST64	__SCN64FAST(o)
+#define SCNuFAST64	__SCN64FAST(u)
+#define SCNxFAST64	__SCN64FAST(x)
+#endif
+
+/* max-bit types */
+#if __have_long64
+#define __PRIMAX(x) __STRINGIFY(l##x)
+#define __SCNMAX(x) __STRINGIFY(l##x)
+#elif __have_longlong64
+#define __PRIMAX(x) __STRINGIFY(ll##x)
+#define __SCNMAX(x) __STRINGIFY(ll##x)
 #else
-
-/* We have to define the `uintmax_t' type using `lldiv_t'.  */
-typedef struct
-  {
-    __extension__ long long int quot;	/* Quotient.  */
-    __extension__ long long int rem;	/* Remainder.  */
-  } imaxdiv_t;
-
+#define __PRIMAX(x) __STRINGIFY(x)
+#define __SCNMAX(x) __STRINGIFY(x)
 #endif
 
+#define PRIdMAX		__PRIMAX(d)
+#define PRIiMAX		__PRIMAX(i)
+#define PRIoMAX		__PRIMAX(o)
+#define PRIuMAX		__PRIMAX(u)
+#define PRIxMAX		__PRIMAX(x)
+#define PRIXMAX		__PRIMAX(X)
 
-/* Compute absolute value of N.  */
-extern intmax_t imaxabs (intmax_t __n) __THROW __attribute__ ((__const__));
+#define SCNdMAX		__SCNMAX(d)
+#define SCNiMAX		__SCNMAX(i)
+#define SCNoMAX		__SCNMAX(o)
+#define SCNuMAX		__SCNMAX(u)
+#define SCNxMAX		__SCNMAX(x)
 
-/* Return the `imaxdiv_t' representation of the value of NUMER over DENOM. */
-extern imaxdiv_t imaxdiv (intmax_t __numer, intmax_t __denom)
-      __THROW __attribute__ ((__const__));
-
-/* Like `strtol' but convert to `intmax_t'.  */
-extern intmax_t strtoimax (const char *__restrict __nptr,
-			   char **__restrict __endptr, int __base) __THROW;
-
-/* Like `strtoul' but convert to `uintmax_t'.  */
-extern uintmax_t strtoumax (const char *__restrict __nptr,
-			    char ** __restrict __endptr, int __base) __THROW;
-
-/* Like `wcstol' but convert to `intmax_t'.  */
-extern intmax_t wcstoimax (const __gwchar_t *__restrict __nptr,
-			   __gwchar_t **__restrict __endptr, int __base)
-     __THROW;
-
-/* Like `wcstoul' but convert to `uintmax_t'.  */
-extern uintmax_t wcstoumax (const __gwchar_t *__restrict __nptr,
-			    __gwchar_t ** __restrict __endptr, int __base)
-     __THROW;
-
-/* Versions of the above functions that handle '0b' and '0B' prefixes
-   in base 0 or 2.  */
-#if __GLIBC_USE (C2X_STRTOL)
-# ifdef __REDIRECT
-extern intmax_t __REDIRECT_NTH (strtoimax, (const char *__restrict __nptr,
-					    char **__restrict __endptr,
-					    int __base), __isoc23_strtoimax);
-extern uintmax_t __REDIRECT_NTH (strtoumax, (const char *__restrict __nptr,
-					     char **__restrict __endptr,
-					     int __base), __isoc23_strtoumax);
-extern intmax_t __REDIRECT_NTH (wcstoimax,
-				(const __gwchar_t *__restrict __nptr,
-				 __gwchar_t **__restrict __endptr, int __base),
-				__isoc23_wcstoimax);
-extern uintmax_t __REDIRECT_NTH (wcstoumax,
-				 (const __gwchar_t *__restrict __nptr,
-				  __gwchar_t **__restrict __endptr, int __base),
-				 __isoc23_wcstoumax);
-# else
-extern intmax_t __isoc23_strtoimax (const char *__restrict __nptr,
-				    char **__restrict __endptr, int __base)
-     __THROW;
-extern uintmax_t __isoc23_strtoumax (const char *__restrict __nptr,
-				     char ** __restrict __endptr, int __base)
-     __THROW;
-extern intmax_t __isoc23_wcstoimax (const __gwchar_t *__restrict __nptr,
-				    __gwchar_t **__restrict __endptr,
-				    int __base)
-     __THROW;
-extern uintmax_t __isoc23_wcstoumax (const __gwchar_t *__restrict __nptr,
-				     __gwchar_t ** __restrict __endptr,
-				     int __base)
-     __THROW;
-# define strtoimax __isoc23_strtoimax
-# define strtoumax __isoc23_strtoumax
-# define wcstoimax __isoc23_wcstoimax
-# define wcstoumax __isoc23_wcstoumax
-# endif
+/* ptr types */
+#if defined (_INTPTR_EQ_LONGLONG)
+# define __PRIPTR(x) __STRINGIFY(ll##x)
+# define __SCNPTR(x) __STRINGIFY(ll##x)
+#elif defined (_INTPTR_EQ_LONG)
+# define __PRIPTR(x) __STRINGIFY(l##x)
+# define __SCNPTR(x) __STRINGIFY(l##x)
+#else
+# define __PRIPTR(x) __STRINGIFY(x)
+# define __SCNPTR(x) __STRINGIFY(x)
 #endif
 
-__END_DECLS
+#define PRIdPTR		__PRIPTR(d)
+#define PRIiPTR		__PRIPTR(i)
+#define PRIoPTR		__PRIPTR(o)
+#define PRIuPTR		__PRIPTR(u)
+#define PRIxPTR		__PRIPTR(x)
+#define PRIXPTR		__PRIPTR(X)
 
-#endif /* inttypes.h */
+#define SCNdPTR		__SCNPTR(d)
+#define SCNiPTR		__SCNPTR(i)
+#define SCNoPTR		__SCNPTR(o)
+#define SCNuPTR		__SCNPTR(u)
+#define SCNxPTR		__SCNPTR(x)
+
+
+typedef struct {
+  intmax_t	quot;
+  intmax_t	rem;
+} imaxdiv_t;
+
+struct _reent;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern intmax_t  imaxabs(intmax_t);
+extern imaxdiv_t imaxdiv(intmax_t __numer, intmax_t __denomer);
+extern intmax_t  strtoimax(const char *__restrict, char **__restrict, int);
+extern intmax_t  _strtoimax_r(struct _reent *, const char *__restrict, char **__restrict, int);
+extern uintmax_t strtoumax(const char *__restrict, char **__restrict, int);
+extern uintmax_t _strtoumax_r(struct _reent *, const char *__restrict, char **__restrict, int);
+extern intmax_t  wcstoimax(const wchar_t *__restrict, wchar_t **__restrict, int);
+extern intmax_t  _wcstoimax_r(struct _reent *, const wchar_t *__restrict, wchar_t **__restrict, int);
+extern uintmax_t wcstoumax(const wchar_t *__restrict, wchar_t **__restrict, int);
+extern uintmax_t _wcstoumax_r(struct _reent *, const wchar_t *__restrict, wchar_t **__restrict, int);
+
+#if __BSD_VISIBLE
+extern intmax_t  strtoimax_l(const char *__restrict, char **_restrict, int, locale_t);
+extern uintmax_t strtoumax_l(const char *__restrict, char **_restrict, int, locale_t);
+extern intmax_t  wcstoimax_l(const wchar_t *__restrict, wchar_t **_restrict, int, locale_t);
+extern uintmax_t wcstoumax_l(const wchar_t *__restrict, wchar_t **_restrict, int, locale_t);
+#endif
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

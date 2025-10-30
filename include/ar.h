@@ -1,47 +1,65 @@
-/* Header describing `ar' archive file format.
-   Copyright (C) 1996-2024 Free Software Foundation, Inc.
-   This file is part of the GNU C Library.
+/*	$NetBSD: ar.h,v 1.4 1994/10/26 00:55:43 cgd Exp $	*/
 
-   The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Lesser General Public
-   License as published by the Free Software Foundation; either
-   version 2.1 of the License, or (at your option) any later version.
+/*-
+ * Copyright (c) 1991, 1993
+ *	The Regents of the University of California.  All rights reserved.
+ * (c) UNIX System Laboratories, Inc.
+ * All or some portions of this file are derived from material licensed
+ * to the University of California by American Telephone and Telegraph
+ * Co. or Unix System Laboratories, Inc. and are reproduced herein with
+ * the permission of UNIX System Laboratories, Inc.
+ *
+ * This code is derived from software contributed to Berkeley by
+ * Hugh Smith at The University of Guelph.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the University nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ *	@(#)ar.h	8.2 (Berkeley) 1/21/94
+ */
 
-   The GNU C Library is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Lesser General Public License for more details.
+#ifndef _AR_H_
+#define	_AR_H_
 
-   You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, see
-   <https://www.gnu.org/licenses/>.  */
+/* Pre-4BSD archives had these magic numbers in them. */
+#define	OARMAG1	0177555
+#define	OARMAG2	0177545
 
-#ifndef _AR_H
-#define _AR_H 1
+#define	ARMAG		"!<arch>\n"	/* ar "magic number" */
+#define	SARMAG		8		/* strlen(ARMAG); */
 
-#include <sys/cdefs.h>
+#define	AR_EFMT1	"#1/"		/* extended format #1 */
 
-/* Archive files start with the ARMAG identifying string.  Then follows a
-   `struct ar_hdr', and as many bytes of member file data as its `ar_size'
-   member indicates, for each member file.  */
+struct ar_hdr {
+	char ar_name[16];		/* name */
+	char ar_date[12];		/* modification time */
+	char ar_uid[6];			/* user id */
+	char ar_gid[6];			/* group id */
+	char ar_mode[8];		/* octal file permissions */
+	char ar_size[10];		/* size in bytes */
+#define	ARFMAG	"`\n"
+	char ar_fmag[2];		/* consistency check */
+};
 
-#define ARMAG	"!<arch>\n"	/* String that begins an archive file.  */
-#define SARMAG	8		/* Size of that string.  */
-
-#define ARFMAG	"`\n"		/* String in ar_fmag at end of each header.  */
-
-__BEGIN_DECLS
-
-struct ar_hdr
-  {
-    char ar_name[16];		/* Member file name, sometimes / terminated. */
-    char ar_date[12];		/* File date, decimal seconds since Epoch.  */
-    char ar_uid[6], ar_gid[6];	/* User and group IDs, in ASCII decimal.  */
-    char ar_mode[8];		/* File mode, in ASCII octal.  */
-    char ar_size[10];		/* File size, in ASCII decimal.  */
-    char ar_fmag[2];		/* Always contains ARFMAG.  */
-  };
-
-__END_DECLS
-
-#endif /* ar.h */
+#endif /* !_AR_H_ */

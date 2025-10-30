@@ -1,260 +1,448 @@
-/* Copyright (C) 1991-2021 Free Software Foundation, Inc.
-   This file is part of the GNU C Library.
+/* time.h -- An implementation of the standard Unix <sys/time.h> file.
+   Written by Geoffrey Noer <noer@cygnus.com>
+   Public domain; no rights reserved. */
 
-   The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Lesser General Public
-   License as published by the Free Software Foundation; either
-   version 2.1 of the License, or (at your option) any later version.
+/*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright (c) 1982, 1986, 1993
+ *	The Regents of the University of California.  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the University nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ *	@(#)time.h	8.5 (Berkeley) 5/4/95
+ * $FreeBSD: head/sys/sys/time.h 346176 2019-04-13 04:46:35Z imp $
+ */
 
-   The GNU C Library is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Lesser General Public License for more details.
+#ifndef _SYS_TIME_H_
+#define	_SYS_TIME_H_
 
-   You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, see
-   <https://www.gnu.org/licenses/>.  */
+#include <_ansi.h>
+#include <sys/cdefs.h>
+#include <sys/_timeval.h>
+#include <sys/types.h>
+#include <sys/timespec.h>
 
-#ifndef _SYS_TIME_H
-#define _SYS_TIME_H	1
-
-#include <features.h>
-
-#include <bits/types.h>
-#include <bits/types/time_t.h>
-#include <bits/types/struct_timeval.h>
-
-#ifndef __suseconds_t_defined
-typedef __suseconds_t suseconds_t;
-# define __suseconds_t_defined
+#if __BSD_VISIBLE || __POSIX_VISIBLE >= 200112 || __XSI_VISIBLE
+#include <sys/select.h>
 #endif
 
-#include <sys/select.h>
+struct timezone {
+	int	tz_minuteswest;	/* minutes west of Greenwich */
+	int	tz_dsttime;	/* type of dst correction */
+};
+#define	DST_NONE	0	/* not on dst */
+#define	DST_USA		1	/* USA style dst */
+#define	DST_AUST	2	/* Australian style dst */
+#define	DST_WET		3	/* Western European dst */
+#define	DST_MET		4	/* Middle European dst */
+#define	DST_EET		5	/* Eastern European dst */
+#define	DST_CAN		6	/* Canada */
+
+#if __BSD_VISIBLE
+struct bintime {
+	time_t	sec;
+	uint64_t frac;
+};
+
+static __inline void
+bintime_addx(struct bintime *_bt, uint64_t _x)
+{
+	uint64_t _u;
+
+	_u = _bt->frac;
+	_bt->frac += _x;
+	if (_u > _bt->frac)
+		_bt->sec++;
+}
+
+static __inline void
+bintime_add(struct bintime *_bt, const struct bintime *_bt2)
+{
+	uint64_t _u;
+
+	_u = _bt->frac;
+	_bt->frac += _bt2->frac;
+	if (_u > _bt->frac)
+		_bt->sec++;
+	_bt->sec += _bt2->sec;
+}
+
+static __inline void
+bintime_sub(struct bintime *_bt, const struct bintime *_bt2)
+{
+	uint64_t _u;
+
+	_u = _bt->frac;
+	_bt->frac -= _bt2->frac;
+	if (_u < _bt->frac)
+		_bt->sec--;
+	_bt->sec -= _bt2->sec;
+}
+
+static __inline void
+bintime_mul(struct bintime *_bt, u_int _x)
+{
+	uint64_t _p1, _p2;
+
+	_p1 = (_bt->frac & 0xffffffffull) * _x;
+	_p2 = (_bt->frac >> 32) * _x + (_p1 >> 32);
+	_bt->sec *= _x;
+	_bt->sec += (_p2 >> 32);
+	_bt->frac = (_p2 << 32) | (_p1 & 0xffffffffull);
+}
+
+static __inline void
+bintime_shift(struct bintime *_bt, int _exp)
+{
+
+	if (_exp > 0) {
+		_bt->sec <<= _exp;
+		_bt->sec |= _bt->frac >> (64 - _exp);
+		_bt->frac <<= _exp;
+	} else if (_exp < 0) {
+		_bt->frac >>= -_exp;
+		_bt->frac |= (uint64_t)_bt->sec << (64 + _exp);
+		_bt->sec >>= -_exp;
+	}
+}
+
+#define	bintime_clear(a)	((a)->sec = (a)->frac = 0)
+#define	bintime_isset(a)	((a)->sec || (a)->frac)
+#define	bintime_cmp(a, b, cmp)						\
+	(((a)->sec == (b)->sec) ?					\
+	    ((a)->frac cmp (b)->frac) :					\
+	    ((a)->sec cmp (b)->sec))
+
+#define	SBT_1S	((sbintime_t)1 << 32)
+#define	SBT_1M	(SBT_1S * 60)
+#define	SBT_1MS	(SBT_1S / 1000)
+#define	SBT_1US	(SBT_1S / 1000000)
+#define	SBT_1NS	(SBT_1S / 1000000000) /* beware rounding, see nstosbt() */
+#define	SBT_MAX	0x7fffffffffffffffLL
+
+static __inline int
+sbintime_getsec(sbintime_t _sbt)
+{
+
+	return (_sbt >> 32);
+}
+
+static __inline sbintime_t
+bttosbt(const struct bintime _bt)
+{
+
+	return (((sbintime_t)_bt.sec << 32) + (_bt.frac >> 32));
+}
+
+static __inline struct bintime
+sbttobt(sbintime_t _sbt)
+{
+	struct bintime _bt;
+
+	_bt.sec = _sbt >> 32;
+	_bt.frac = _sbt << 32;
+	return (_bt);
+}
+
+/*
+ * Decimal<->sbt conversions.  Multiplying or dividing by SBT_1NS results in
+ * large roundoff errors which sbttons() and nstosbt() avoid.  Millisecond and
+ * microsecond functions are also provided for completeness.
+ *
+ * These functions return the smallest sbt larger or equal to the
+ * number of seconds requested so that sbttoX(Xtosbt(y)) == y.  Unlike
+ * top of second computations below, which require that we tick at the
+ * top of second, these need to be rounded up so we do whatever for at
+ * least as long as requested.
+ *
+ * The naive computation we'd do is this
+ *	((unit * 2^64 / SIFACTOR) + 2^32-1) >> 32
+ * However, that overflows. Instead, we compute
+ *	((unit * 2^63 / SIFACTOR) + 2^31-1) >> 32
+ * and use pre-computed constants that are the ceil of the 2^63 / SIFACTOR
+ * term to ensure we are using exactly the right constant. We use the lesser
+ * evil of ull rather than a uint64_t cast to ensure we have well defined
+ * right shift semantics. With these changes, we get all the ns, us and ms
+ * conversions back and forth right.
+ */
+static __inline int64_t
+sbttons(sbintime_t _sbt)
+{
+	uint64_t ns;
+
+	ns = _sbt;
+	if (ns >= SBT_1S)
+		ns = (ns >> 32) * 1000000000;
+	else
+		ns = 0;
+
+	return (ns + (1000000000 * (_sbt & 0xffffffffu) >> 32));
+}
+
+static __inline sbintime_t
+nstosbt(int64_t _ns)
+{
+	sbintime_t sb = 0;
+
+	if (_ns >= SBT_1S) {
+		sb = (_ns / 1000000000) * SBT_1S;
+		_ns = _ns % 1000000000;
+	}
+	/* 9223372037 = ceil(2^63 / 1000000000) */
+	sb += ((_ns * 9223372037ull) + 0x7fffffff) >> 31;
+	return (sb);
+}
+
+static __inline int64_t
+sbttous(sbintime_t _sbt)
+{
+
+	return ((1000000 * _sbt) >> 32);
+}
+
+static __inline sbintime_t
+ustosbt(int64_t _us)
+{
+	sbintime_t sb = 0;
+
+	if (_us >= SBT_1S) {
+		sb = (_us / 1000000) * SBT_1S;
+		_us = _us % 1000000;
+	}
+	/* 9223372036855 = ceil(2^63 / 1000000) */
+	sb += ((_us * 9223372036855ull) + 0x7fffffff) >> 31;
+	return (sb);
+}
+
+static __inline int64_t
+sbttoms(sbintime_t _sbt)
+{
+
+	return ((1000 * _sbt) >> 32);
+}
+
+static __inline sbintime_t
+mstosbt(int64_t _ms)
+{
+	sbintime_t sb = 0;
+
+	if (_ms >= SBT_1S) {
+		sb = (_ms / 1000) * SBT_1S;
+		_ms = _ms % 1000;
+	}
+	/* 9223372036854776 = ceil(2^63 / 1000) */
+	sb += ((_ms * 9223372036854776ull) + 0x7fffffff) >> 31;
+	return (sb);
+}
+
+/*-
+ * Background information:
+ *
+ * When converting between timestamps on parallel timescales of differing
+ * resolutions it is historical and scientific practice to round down rather
+ * than doing 4/5 rounding.
+ *
+ *   The date changes at midnight, not at noon.
+ *
+ *   Even at 15:59:59.999999999 it's not four'o'clock.
+ *
+ *   time_second ticks after N.999999999 not after N.4999999999
+ */
+
+static __inline void
+bintime2timespec(const struct bintime *_bt, struct timespec *_ts)
+{
+
+	_ts->tv_sec = _bt->sec;
+	_ts->tv_nsec = ((uint64_t)1000000000 *
+	    (uint32_t)(_bt->frac >> 32)) >> 32;
+}
+
+static __inline void
+timespec2bintime(const struct timespec *_ts, struct bintime *_bt)
+{
+
+	_bt->sec = _ts->tv_sec;
+	/* 18446744073 = int(2^64 / 1000000000) */
+	_bt->frac = _ts->tv_nsec * (uint64_t)18446744073LL;
+}
+
+static __inline void
+bintime2timeval(const struct bintime *_bt, struct timeval *_tv)
+{
+
+	_tv->tv_sec = _bt->sec;
+	_tv->tv_usec = ((uint64_t)1000000 * (uint32_t)(_bt->frac >> 32)) >> 32;
+}
+
+static __inline void
+timeval2bintime(const struct timeval *_tv, struct bintime *_bt)
+{
+
+	_bt->sec = _tv->tv_sec;
+	/* 18446744073709 = int(2^64 / 1000000) */
+	_bt->frac = _tv->tv_usec * (uint64_t)18446744073709LL;
+}
+
+static __inline struct timespec
+sbttots(sbintime_t _sbt)
+{
+	struct timespec _ts;
+
+	_ts.tv_sec = _sbt >> 32;
+	_ts.tv_nsec = sbttons((uint32_t)_sbt);
+	return (_ts);
+}
+
+static __inline sbintime_t
+tstosbt(struct timespec _ts)
+{
+
+	return (((sbintime_t)_ts.tv_sec << 32) + nstosbt(_ts.tv_nsec));
+}
+
+static __inline struct timeval
+sbttotv(sbintime_t _sbt)
+{
+	struct timeval _tv;
+
+	_tv.tv_sec = _sbt >> 32;
+	_tv.tv_usec = sbttous((uint32_t)_sbt);
+	return (_tv);
+}
+
+static __inline sbintime_t
+tvtosbt(struct timeval _tv)
+{
+
+	return (((sbintime_t)_tv.tv_sec << 32) + ustosbt(_tv.tv_usec));
+}
+
+/* Operations on timespecs */
+#define	timespecclear(tvp)	((tvp)->tv_sec = (tvp)->tv_nsec = 0)
+#define	timespecisset(tvp)	((tvp)->tv_sec || (tvp)->tv_nsec)
+#define	timespeccmp(tvp, uvp, cmp)					\
+	(((tvp)->tv_sec == (uvp)->tv_sec) ?				\
+	    ((tvp)->tv_nsec cmp (uvp)->tv_nsec) :			\
+	    ((tvp)->tv_sec cmp (uvp)->tv_sec))
+
+#define	timespecadd(tsp, usp, vsp)					\
+	do {								\
+		(vsp)->tv_sec = (tsp)->tv_sec + (usp)->tv_sec;		\
+		(vsp)->tv_nsec = (tsp)->tv_nsec + (usp)->tv_nsec;	\
+		if ((vsp)->tv_nsec >= 1000000000L) {			\
+			(vsp)->tv_sec++;				\
+			(vsp)->tv_nsec -= 1000000000L;			\
+		}							\
+	} while (0)
+#define	timespecsub(tsp, usp, vsp)					\
+	do {								\
+		(vsp)->tv_sec = (tsp)->tv_sec - (usp)->tv_sec;		\
+		(vsp)->tv_nsec = (tsp)->tv_nsec - (usp)->tv_nsec;	\
+		if ((vsp)->tv_nsec < 0) {				\
+			(vsp)->tv_sec--;				\
+			(vsp)->tv_nsec += 1000000000L;			\
+		}							\
+	} while (0)
+
+#ifndef _KERNEL			/* NetBSD/OpenBSD compatible interfaces */
+
+#define	timerclear(tvp)		((tvp)->tv_sec = (tvp)->tv_usec = 0)
+#define	timerisset(tvp)		((tvp)->tv_sec || (tvp)->tv_usec)
+#define	timercmp(tvp, uvp, cmp)					\
+	(((tvp)->tv_sec == (uvp)->tv_sec) ?				\
+	    ((tvp)->tv_usec cmp (uvp)->tv_usec) :			\
+	    ((tvp)->tv_sec cmp (uvp)->tv_sec))
+#define	timeradd(tvp, uvp, vvp)						\
+	do {								\
+		(vvp)->tv_sec = (tvp)->tv_sec + (uvp)->tv_sec;		\
+		(vvp)->tv_usec = (tvp)->tv_usec + (uvp)->tv_usec;	\
+		if ((vvp)->tv_usec >= 1000000) {			\
+			(vvp)->tv_sec++;				\
+			(vvp)->tv_usec -= 1000000;			\
+		}							\
+	} while (0)
+#define	timersub(tvp, uvp, vvp)						\
+	do {								\
+		(vvp)->tv_sec = (tvp)->tv_sec - (uvp)->tv_sec;		\
+		(vvp)->tv_usec = (tvp)->tv_usec - (uvp)->tv_usec;	\
+		if ((vvp)->tv_usec < 0) {				\
+			(vvp)->tv_sec--;				\
+			(vvp)->tv_usec += 1000000;			\
+		}							\
+	} while (0)
+#endif
+#endif /* __BSD_VISIBLE */
+
+/*
+ * Names of the interval timers, and structure
+ * defining a timer setting.
+ */
+#define	ITIMER_REAL	0
+#define	ITIMER_VIRTUAL	1
+#define	ITIMER_PROF	2
+
+struct itimerval {
+	struct	timeval it_interval;	/* timer interval */
+	struct	timeval it_value;	/* current value */
+};
+
+#ifndef _KERNEL
+#include <time.h>
 
 __BEGIN_DECLS
+int utimes (const char *, const struct timeval [2]);
 
-#ifdef __USE_GNU
-/* Macros for converting between `struct timeval' and `struct timespec'.  */
-# define TIMEVAL_TO_TIMESPEC(tv, ts) {                                   \
-	(ts)->tv_sec = (tv)->tv_sec;                                    \
-	(ts)->tv_nsec = (tv)->tv_usec * 1000;                           \
-}
-# define TIMESPEC_TO_TIMEVAL(tv, ts) {                                   \
-	(tv)->tv_sec = (ts)->tv_sec;                                    \
-	(tv)->tv_usec = (ts)->tv_nsec / 1000;                           \
-}
+#if __BSD_VISIBLE
+int adjtime (const struct timeval *, struct timeval *);
+int futimes (int, const struct timeval [2]);
+int lutimes (const char *, const struct timeval [2]);
+int settimeofday (const struct timeval *, const struct timezone *);
 #endif
 
-
-#ifdef __USE_MISC
-/* Structure crudely representing a timezone.
-   This is obsolete and should never be used.  */
-struct timezone
-  {
-    int tz_minuteswest;		/* Minutes west of GMT.  */
-    int tz_dsttime;		/* Nonzero if DST is ever in effect.  */
-  };
+#if __MISC_VISIBLE || __XSI_VISIBLE
+int getitimer (int __which, struct itimerval *__value);
+int setitimer (int __which, const struct itimerval *__restrict __value,
+					struct itimerval *__restrict __ovalue);
 #endif
 
-/* Get the current time of day, putting it into *TV.
-   If TZ is not null, *TZ must be a struct timezone, and both fields
-   will be set to zero.
-   Calling this function with a non-null TZ is obsolete;
-   use localtime etc. instead.
-   This function itself is semi-obsolete;
-   most callers should use time or clock_gettime instead. */
-#ifndef __USE_TIME_BITS64
-extern int gettimeofday (struct timeval *__restrict __tv,
-			 void *__restrict __tz) __THROW __nonnull ((1));
-#else
-# ifdef __REDIRECT_NTH
-extern int __REDIRECT_NTH (gettimeofday, (struct timeval *__restrict __tv,
-                                          void *__restrict __tz),
-                           __gettimeofday64) __nonnull ((1));
-# else
-#  define gettimeofday __gettimeofday64
-# endif
+int gettimeofday (struct timeval *__restrict __p,
+			  void *__restrict __tz);
+
+#if __GNU_VISIBLE
+int futimesat (int, const char *, const struct timeval [2]);
 #endif
 
-#ifdef __USE_MISC
-# ifndef __USE_TIME_BITS64
-/* Set the current time of day and timezone information.
-   This call is restricted to the super-user.
-   Setting the timezone in this way is obsolete, but we don't yet
-   warn about it because it still has some uses for which there is
-   no alternative.  */
-extern int settimeofday (const struct timeval *__tv,
-			 const struct timezone *__tz)
-     __THROW;
-
-/* Adjust the current time of day by the amount in DELTA.
-   If OLDDELTA is not NULL, it is filled in with the amount
-   of time adjustment remaining to be done from the last `adjtime' call.
-   This call is restricted to the super-user.  */
-extern int adjtime (const struct timeval *__delta,
-		    struct timeval *__olddelta) __THROW;
-# else
-#  ifdef __REDIRECT_NTH
-extern int __REDIRECT_NTH (settimeofday, (const struct timeval *__tv,
-                                          const struct timezone *__tz),
-                           __settimeofday64);
-
-extern int __REDIRECT_NTH (adjtime, (const struct timeval *__delta,
-                                     struct timeval *__olddelta),
-                           __adjtime64);
-#  else
-#   define settimeofday __settimeofday64
-#   define adjtime __adjtime64
-#  endif
-# endif
+#ifdef _LIBC
+int _gettimeofday (struct timeval *__p, void *__tz);
 #endif
-
-
-/* Values for the first argument to `getitimer' and `setitimer'.  */
-enum __itimer_which
-  {
-    /* Timers run in real time.  */
-    ITIMER_REAL = 0,
-#define ITIMER_REAL ITIMER_REAL
-    /* Timers run only when the process is executing.  */
-    ITIMER_VIRTUAL = 1,
-#define ITIMER_VIRTUAL ITIMER_VIRTUAL
-    /* Timers run when the process is executing and when
-       the system is executing on behalf of the process.  */
-    ITIMER_PROF = 2
-#define ITIMER_PROF ITIMER_PROF
-  };
-
-/* Type of the second argument to `getitimer' and
-   the second and third arguments `setitimer'.  */
-struct itimerval
-  {
-    /* Value to put into `it_value' when the timer expires.  */
-    struct timeval it_interval;
-    /* Time to the next timer expiration.  */
-    struct timeval it_value;
-  };
-
-#if defined __USE_GNU && !defined __cplusplus
-/* Use the nicer parameter type only in GNU mode and not for C++ since the
-   strict C++ rules prevent the automatic promotion.  */
-typedef enum __itimer_which __itimer_which_t;
-#else
-typedef int __itimer_which_t;
-#endif
-
-#ifndef __USE_TIME_BITS64
-/* Set *VALUE to the current setting of timer WHICH.
-   Return 0 on success, -1 on errors.  */
-extern int getitimer (__itimer_which_t __which,
-		      struct itimerval *__value) __THROW;
-
-/* Set the timer WHICH to *NEW.  If OLD is not NULL,
-   set *OLD to the old value of timer WHICH.
-   Returns 0 on success, -1 on errors.  */
-extern int setitimer (__itimer_which_t __which,
-		      const struct itimerval *__restrict __new,
-		      struct itimerval *__restrict __old) __THROW;
-
-/* Change the access time of FILE to TVP[0] and the modification time of
-   FILE to TVP[1].  If TVP is a null pointer, use the current time instead.
-   Returns 0 on success, -1 on errors.  */
-extern int utimes (const char *__file, const struct timeval __tvp[2])
-     __THROW __nonnull ((1));
-
-#else
-# ifdef __REDIRECT_NTH
-extern int __REDIRECT_NTH (getitimer, (__itimer_which_t __which,
-                                       struct itimerval *__value),
-                           __getitimer64);
-
-extern int __REDIRECT_NTH (setitimer, (__itimer_which_t __which,
-                                       const struct itimerval *__restrict __new,
-                                       struct itimerval *__restrict __old),
-                           __setitimer64);
-
-extern int __REDIRECT_NTH (utimes, (const char *__file,
-                                    const struct timeval __tvp[2]),
-                           __utimes64) __nonnull ((1));
-# else
-#  define getitimer __getitimer64
-#  define setitimer __setitimer64
-#  define utimes __utimes64
-# endif
-#endif
-
-#ifdef __USE_MISC
-# ifndef __USE_TIME_BITS64
-/* Same as `utimes', but does not follow symbolic links.  */
-extern int lutimes (const char *__file, const struct timeval __tvp[2])
-     __THROW __nonnull ((1));
-
-/* Same as `utimes', but takes an open file descriptor instead of a name.  */
-extern int futimes (int __fd, const struct timeval __tvp[2]) __THROW;
-# else
-#  ifdef __REDIRECT_NTH
-extern int __REDIRECT_NTH (lutimes, (const char *__file,
-                                     const struct timeval __tvp[2]),
-                           __lutimes64) __nonnull ((1));
-
-extern int __REDIRECT_NTH (futimes, (int __fd, const struct timeval __tvp[2]),
-                           __futimes64);
-#  else
-#   define lutimes __lutimes64
-#   define futimes __futimes64
-#  endif
-# endif
-#endif
-
-#ifdef __USE_GNU
-# ifndef __USE_TIME_BITS64
-/* Change the access time of FILE relative to FD to TVP[0] and the
-   modification time of FILE to TVP[1].  If TVP is a null pointer, use
-   the current time instead.  Returns 0 on success, -1 on errors.  */
-extern int futimesat (int __fd, const char *__file,
-		      const struct timeval __tvp[2]) __THROW;
-# else
-#  ifdef __REDIRECT_NTH
-extern int __REDIRECT_NTH (futimesat, (int __fd, const char *__file,
-                                       const struct timeval __tvp[2]),
-                           __futimesat64);
-#  else
-#   define futimesat __futimesat64
-#  endif
-# endif
-#endif
-
-
-#ifdef __USE_MISC
-/* Convenience macros for operations on timevals.
-   NOTE: `timercmp' does not work for >= or <=.  */
-# define timerisset(tvp)	((tvp)->tv_sec || (tvp)->tv_usec)
-# define timerclear(tvp)	((tvp)->tv_sec = (tvp)->tv_usec = 0)
-# define timercmp(a, b, CMP) 						      \
-  (((a)->tv_sec == (b)->tv_sec) 					      \
-   ? ((a)->tv_usec CMP (b)->tv_usec) 					      \
-   : ((a)->tv_sec CMP (b)->tv_sec))
-# define timeradd(a, b, result)						      \
-  do {									      \
-    (result)->tv_sec = (a)->tv_sec + (b)->tv_sec;			      \
-    (result)->tv_usec = (a)->tv_usec + (b)->tv_usec;			      \
-    if ((result)->tv_usec >= 1000000)					      \
-      {									      \
-	++(result)->tv_sec;						      \
-	(result)->tv_usec -= 1000000;					      \
-      }									      \
-  } while (0)
-# define timersub(a, b, result)						      \
-  do {									      \
-    (result)->tv_sec = (a)->tv_sec - (b)->tv_sec;			      \
-    (result)->tv_usec = (a)->tv_usec - (b)->tv_usec;			      \
-    if ((result)->tv_usec < 0) {					      \
-      --(result)->tv_sec;						      \
-      (result)->tv_usec += 1000000;					      \
-    }									      \
-  } while (0)
-#endif	/* Misc.  */
 
 __END_DECLS
 
-#endif /* sys/time.h */
+#endif /* !_KERNEL */
+#include <machine/_time.h>
+
+#endif /* !_SYS_TIME_H_ */

@@ -1,193 +1,83 @@
-/* Copyright (C) 1991-2024 Free Software Foundation, Inc.
-   This file is part of the GNU C Library.
-
-   The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Lesser General Public
-   License as published by the Free Software Foundation; either
-   version 2.1 of the License, or (at your option) any later version.
-
-   The GNU C Library is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Lesser General Public License for more details.
-
-   You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, see
-   <https://www.gnu.org/licenses/>.  */
-
-/*
- *	POSIX Standard: 9.2.2 User Database Access	<pwd.h>
+/*-
+ * Copyright (c) 1989 The Regents of the University of California.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the University nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ *	@(#)pwd.h	5.13 (Berkeley) 5/28/91
  */
 
-#ifndef	_PWD_H
-#define	_PWD_H	1
+#ifndef _PWD_H_
+#ifdef __cplusplus
+extern "C" {
+#endif
+#define	_PWD_H_
 
-#include <features.h>
+#include <sys/cdefs.h>
+#include <sys/types.h>
 
-__BEGIN_DECLS
+#if __BSD_VISIBLE
+#define	_PATH_PASSWD		"/etc/passwd"
 
-#include <bits/types.h>
-
-#define __need_size_t
-#include <stddef.h>
-
-#if defined __USE_XOPEN || defined __USE_XOPEN2K
-/* The Single Unix specification says that some more types are
-   available here.  */
-# ifndef __gid_t_defined
-typedef __gid_t gid_t;
-#  define __gid_t_defined
-# endif
-
-# ifndef __uid_t_defined
-typedef __uid_t uid_t;
-#  define __uid_t_defined
-# endif
+#define	_PASSWORD_LEN		128	/* max length, not counting NULL */
 #endif
 
-/* A record in the user database.  */
-struct passwd
-{
-  char *pw_name;		/* Username.  */
-  char *pw_passwd;		/* Hashed passphrase, if shadow database
-                                   not in use (see shadow.h).  */
-  __uid_t pw_uid;		/* User ID.  */
-  __gid_t pw_gid;		/* Group ID.  */
-  char *pw_gecos;		/* Real name.  */
-  char *pw_dir;			/* Home directory.  */
-  char *pw_shell;		/* Shell program.  */
+struct passwd {
+	char	*pw_name;		/* user name */
+	char	*pw_passwd;		/* encrypted password */
+	uid_t	pw_uid;			/* user uid */
+	gid_t	pw_gid;			/* user gid */
+	char	*pw_comment;		/* comment */
+	char	*pw_gecos;		/* Honeywell login info */
+	char	*pw_dir;		/* home directory */
+	char	*pw_shell;		/* default shell */
 };
 
+struct passwd	*getpwuid (uid_t);
+struct passwd	*getpwnam (const char *);
 
-#ifdef __USE_MISC
-# include <bits/types/FILE.h>
+#ifndef __INSIDE_CYGWIN__
+#if __MISC_VISIBLE || __POSIX_VISIBLE
+int 		 getpwnam_r (const char *, struct passwd *,
+			char *, size_t , struct passwd **);
+int		 getpwuid_r (uid_t, struct passwd *, char *,
+			size_t, struct passwd **);
 #endif
 
-
-#if defined __USE_MISC || defined __USE_XOPEN_EXTENDED
-/* Rewind the user database stream.
-
-   This function is a possible cancellation point and therefore not
-   marked with __THROW.  */
-extern void setpwent (void);
-
-/* Close the user database stream.
-
-   This function is a possible cancellation point and therefore not
-   marked with __THROW.  */
-extern void endpwent (void);
-
-/* Read an entry from the user database stream, opening it if necessary.
-
-   This function is a possible cancellation point and therefore not
-   marked with __THROW.  */
-extern struct passwd *getpwent (void);
+#if __MISC_VISIBLE || __XSI_VISIBLE >= 4
+struct passwd	*getpwent (void);
+void		 setpwent (void);
+void		 endpwent (void);
 #endif
 
-#ifdef	__USE_MISC
-/* Read a user database entry from STREAM.
-
-   This function is not part of POSIX and therefore no official
-   cancellation point.  But due to similarity with an POSIX interface
-   or due to the implementation it is a cancellation point and
-   therefore not marked with __THROW.  */
-extern struct passwd *fgetpwent (FILE *__stream) __nonnull ((1));
-
-/* Write a given user database entry onto the given stream.
-
-   This function is not part of POSIX and therefore no official
-   cancellation point.  But due to similarity with an POSIX interface
-   or due to the implementation it is a cancellation point and
-   therefore not marked with __THROW.  */
-extern int putpwent (const struct passwd *__restrict __p,
-		     FILE *__restrict __f);
+#if __BSD_VISIBLE
+int		 setpassent (int);
 #endif
+#endif /*!__INSIDE_CYGWIN__*/
 
-/* Retrieve the user database entry for the given user ID.
-
-   This function is a possible cancellation point and therefore not
-   marked with __THROW.  */
-extern struct passwd *getpwuid (__uid_t __uid);
-
-/* Retrieve the user database entry for the given username.
-
-   This function is a possible cancellation point and therefore not
-   marked with __THROW.  */
-extern struct passwd *getpwnam (const char *__name) __nonnull ((1));
-
-#ifdef __USE_POSIX
-
-# ifdef __USE_MISC
-/* Reasonable value for the buffer sized used in the reentrant
-   functions below.  But better use `sysconf'.  */
-#  define NSS_BUFLEN_PASSWD	1024
-# endif
-
-/* Reentrant versions of some of the functions above.
-
-   PLEASE NOTE: the `getpwent_r' function is not (yet) standardized.
-   The interface may change in later versions of this library.  But
-   the interface is designed following the principals used for the
-   other reentrant functions so the chances are good this is what the
-   POSIX people would choose.  */
-
-# ifdef __USE_MISC
-/* This function is not part of POSIX and therefore no official
-   cancellation point.  But due to similarity with an POSIX interface
-   or due to the implementation it is a cancellation point and
-   therefore not marked with __THROW.  */
-extern int getpwent_r (struct passwd *__restrict __resultbuf,
-		       char *__restrict __buffer, size_t __buflen,
-		       struct passwd **__restrict __result)
-    __nonnull ((1, 2, 4))
-    __attr_access ((__write_only__, 2, 3));
-# endif
-
-extern int getpwuid_r (__uid_t __uid,
-		       struct passwd *__restrict __resultbuf,
-		       char *__restrict __buffer, size_t __buflen,
-		       struct passwd **__restrict __result)
-    __nonnull ((2, 3, 5))
-    __attr_access ((__write_only__, 3, 4));
-
-extern int getpwnam_r (const char *__restrict __name,
-		       struct passwd *__restrict __resultbuf,
-		       char *__restrict __buffer, size_t __buflen,
-		       struct passwd **__restrict __result)
-    __nonnull ((1, 2, 3, 5))
-    __attr_access ((__write_only__, 3, 4));
-
-
-# ifdef	__USE_MISC
-/* Read a user database entry from STREAM.  This function is not
-   standardized and probably never will.
-
-   This function is not part of POSIX and therefore no official
-   cancellation point.  But due to similarity with an POSIX interface
-   or due to the implementation it is a cancellation point and
-   therefore not marked with __THROW.  */
-extern int fgetpwent_r (FILE *__restrict __stream,
-			struct passwd *__restrict __resultbuf,
-			char *__restrict __buffer, size_t __buflen,
-			struct passwd **__restrict __result)
-    __nonnull ((1, 2, 3, 5))
-    __attr_access ((__write_only__, 3, 4));
-# endif
-
-#endif	/* POSIX or reentrant */
-
-#ifdef __USE_GNU
-/* Write a traditional /etc/passwd line, based on the user database
-   entry for the given UID, to BUFFER; space for BUFFER must be
-   allocated by the caller.
-
-   This function is not part of POSIX and therefore no official
-   cancellation point.  But due to similarity with an POSIX interface
-   or due to the implementation it is a cancellation point and
-   therefore not marked with __THROW.  */
-extern int getpw (__uid_t __uid, char *__buffer);
+#ifdef __cplusplus
+}
 #endif
-
-__END_DECLS
-
-#endif /* pwd.h  */
+#endif /* _PWD_H_ */

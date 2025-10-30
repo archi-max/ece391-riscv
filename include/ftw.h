@@ -1,219 +1,66 @@
-/* Copyright (C) 1992-2024 Free Software Foundation, Inc.
-   This file is part of the GNU C Library.
-
-   The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Lesser General Public
-   License as published by the Free Software Foundation; either
-   version 2.1 of the License, or (at your option) any later version.
-
-   The GNU C Library is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Lesser General Public License for more details.
-
-   You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, see
-   <https://www.gnu.org/licenses/>.  */
-
 /*
- *	X/Open Portability Guide 4.2: ftw.h
- */
+* Copyright © 2005-2020 Rich Felker, et al.
+*
+* Permission is hereby granted, free of charge, to any person obtaining
+* a copy of this software and associated documentation files (the
+* "Software"), to deal in the Software without restriction, including
+* without limitation the rights to use, copy, modify, merge, publish,
+* distribute, sublicense, and/or sell copies of the Software, and to
+* permit persons to whom the Software is furnished to do so, subject to
+* the following conditions:
+*
+* The above copyright notice and this permission notice shall be
+* included in all copies or substantial portions of the Software.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
 
 #ifndef _FTW_H
-#define	_FTW_H	1
+#define	_FTW_H
 
-#include <features.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#include <sys/types.h>
+#include <sys/features.h>
 #include <sys/stat.h>
 
+/*
+ * Valid flags for the 3rd argument to the function that is passed as the
+ * second argument to ftw(3) and nftw(3).  Say it three times fast!
+ */
+#define	FTW_F		0	/* File.  */
+#define	FTW_D		1	/* Directory.  */
+#define	FTW_DNR		2	/* Directory without read permission.  */
+#define	FTW_DP		3	/* Directory with subdirectories visited.  */
+#define	FTW_NS		4	/* Unknown type; stat() failed.  */
+#define	FTW_SL		5	/* Symbolic link.  */
+#define	FTW_SLN		6	/* Sym link that names a nonexistent file.  */
 
-__BEGIN_DECLS
+/*
+ * Flags for use as the 4th argument to nftw(3).  These may be ORed together.
+ */
+#define	FTW_PHYS	0x01	/* Physical walk, don't follow sym links.  */
+#define	FTW_MOUNT	0x02	/* The walk does not cross a mount point.  */
+#define	FTW_DEPTH	0x04	/* Subdirs visited before the dir itself. */
+#define	FTW_CHDIR	0x08	/* Change to a directory before reading it. */
 
-/* Values for the FLAG argument to the user function passed to `ftw'
-   and 'nftw'.  */
-enum
-{
-  FTW_F,		/* Regular file.  */
-#define FTW_F	 FTW_F
-  FTW_D,		/* Directory.  */
-#define FTW_D	 FTW_D
-  FTW_DNR,		/* Unreadable directory.  */
-#define FTW_DNR	 FTW_DNR
-  FTW_NS,		/* Unstatable file.  */
-#define FTW_NS	 FTW_NS
-
-#if defined __USE_MISC || defined __USE_XOPEN_EXTENDED
-
-  FTW_SL,		/* Symbolic link.  */
-# define FTW_SL	 FTW_SL
-#endif
-
-#ifdef __USE_XOPEN_EXTENDED
-/* These flags are only passed from the `nftw' function.  */
-  FTW_DP,		/* Directory, all subdirs have been visited. */
-# define FTW_DP	 FTW_DP
-  FTW_SLN		/* Symbolic link naming non-existing file.  */
-# define FTW_SLN FTW_SLN
-
-#endif	/* extended X/Open */
+struct FTW {
+	int base;
+	int level;
 };
 
+int ftw(const char *, int (*)(const char *, const struct stat *, int), int);
+int nftw(const char *, int (*)(const char *, const struct stat *, int, struct FTW *), int, int);
 
-#ifdef __USE_XOPEN_EXTENDED
-/* Flags for fourth argument of `nftw'.  */
-enum
-{
-  FTW_PHYS = 1,		/* Perform physical walk, ignore symlinks.  */
-# define FTW_PHYS	FTW_PHYS
-  FTW_MOUNT = 2,	/* Report only files on same file system as the
-			   argument.  */
-# define FTW_MOUNT	FTW_MOUNT
-  FTW_CHDIR = 4,	/* Change to current directory while processing it.  */
-# define FTW_CHDIR	FTW_CHDIR
-  FTW_DEPTH = 8		/* Report files in directory before directory itself.*/
-# define FTW_DEPTH	FTW_DEPTH
-# ifdef __USE_GNU
-  ,
-  FTW_ACTIONRETVAL = 16	/* Assume callback to return FTW_* values instead of
-			   zero to continue and non-zero to terminate.  */
-#  define FTW_ACTIONRETVAL FTW_ACTIONRETVAL
-# endif
-};
-
-#ifdef __USE_GNU
-/* Return values from callback functions.  */
-enum
-{
-  FTW_CONTINUE = 0,	/* Continue with next sibling or for FTW_D with the
-			   first child.  */
-# define FTW_CONTINUE	FTW_CONTINUE
-  FTW_STOP = 1,		/* Return from `ftw' or `nftw' with FTW_STOP as return
-			   value.  */
-# define FTW_STOP	FTW_STOP
-  FTW_SKIP_SUBTREE = 2,	/* Only meaningful for FTW_D: Don't walk through the
-			   subtree, instead just continue with its next
-			   sibling. */
-# define FTW_SKIP_SUBTREE FTW_SKIP_SUBTREE
-  FTW_SKIP_SIBLINGS = 3,/* Continue with FTW_DP callback for current directory
-			    (if FTW_DEPTH) and then its siblings.  */
-# define FTW_SKIP_SIBLINGS FTW_SKIP_SIBLINGS
-};
+#ifdef __cplusplus
+}
 #endif
 
-/* Structure used for fourth argument to callback function for `nftw'.  */
-struct FTW
-  {
-    int base;
-    int level;
-  };
-#endif	/* extended X/Open */
-
-
-/* Convenient types for callback functions.  */
-typedef int (*__ftw_func_t) (const char *__filename,
-			     const struct stat *__status, int __flag);
-#ifdef __USE_LARGEFILE64
-typedef int (*__ftw64_func_t) (const char *__filename,
-			       const struct stat64 *__status, int __flag);
 #endif
-#ifdef __USE_XOPEN_EXTENDED
-typedef int (*__nftw_func_t) (const char *__filename,
-			      const struct stat *__status, int __flag,
-			      struct FTW *__info);
-# ifdef __USE_LARGEFILE64
-typedef int (*__nftw64_func_t) (const char *__filename,
-				const struct stat64 *__status,
-				int __flag, struct FTW *__info);
-# endif
-#endif
-
-/* Call a function on every element in a directory tree.
-
-   This function is a possible cancellation point and therefore not
-   marked with __THROW.  */
-#ifndef __USE_FILE_OFFSET64
-extern int ftw (const char *__dir, __ftw_func_t __func, int __descriptors)
-     __nonnull ((1, 2));
-#else
-# ifdef __REDIRECT
-#  ifndef __USE_TIME_BITS64
-extern int __REDIRECT (ftw, (const char *__dir, __ftw_func_t __func,
-			     int __descriptors), ftw64) __nonnull ((1, 2));
-#  else
-extern int __REDIRECT (ftw, (const char *__dir, __ftw_func_t __func,
-			     int __descriptors), __ftw64_time64)
-     __nonnull ((1, 2));
-#  endif
-# else
-#  ifndef __USE_TIME_BITS64
-#   define ftw ftw64
-#  else
-#   define ftw __ftw64_time64
-#  endif
-# endif
-#endif
-#ifdef __USE_LARGEFILE64
-# ifndef __USE_TIME_BITS64
-extern int ftw64 (const char *__dir, __ftw64_func_t __func,
-		  int __descriptors) __nonnull ((1, 2));
-# else
-#  ifdef __REDIRECT
-extern int __REDIRECT (ftw64, (const char *__dir, __ftw64_func_t __func,
-			       int __descriptors),
-		       __ftw64_time64)
-     __nonnull ((1, 2));
-#  else
-#   define nftw64 __nftw64_time64
-#  endif
-# endif
-#endif
-
-#ifdef __USE_XOPEN_EXTENDED
-/* Call a function on every element in a directory tree.  FLAG allows
-   to specify the behaviour more detailed.
-
-   This function is a possible cancellation point and therefore not
-   marked with __THROW.  */
-# ifndef __USE_FILE_OFFSET64
-extern int nftw (const char *__dir, __nftw_func_t __func, int __descriptors,
-		 int __flag) __nonnull ((1, 2));
-# else
-#  ifdef __REDIRECT
-#   ifndef __USE_TIME_BITS64
-extern int __REDIRECT (nftw, (const char *__dir, __nftw_func_t __func,
-			      int __descriptors, int __flag), nftw64)
-     __nonnull ((1, 2));
-#   else
-extern int __REDIRECT (nftw, (const char *__dir, __nftw_func_t __func,
-			      int __descriptors, int __flag), __nftw64_time64)
-     __nonnull ((1, 2));
-#   endif
-#  else
-#   ifndef __USE_TIME_BITS64
-#    define nftw nftw64
-#   else
-#    define nftw __nftw64_time64
-#   endif
-#  endif
-# endif
-# ifdef __USE_LARGEFILE64
-#  ifndef __USE_TIME_BITS64
-extern int nftw64 (const char *__dir, __nftw64_func_t __func,
-		   int __descriptors, int __flag) __nonnull ((1, 2));
-#  else
-#   ifdef __REDIRECT
-extern int __REDIRECT (nftw64, (const char *__dir, __nftw64_func_t __func,
-				int __descriptors, int __flag),
-		       __nftw64_time64)
-     __nonnull ((1, 2));
-#   else
-#    define nftw64 __nftw64_time64
-#   endif
-#  endif
-# endif
-#endif
-
-__END_DECLS
-
-#endif	/* ftw.h */

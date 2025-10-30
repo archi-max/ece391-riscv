@@ -1,35 +1,40 @@
-/* Copyright (C) 1994-2021 Free Software Foundation, Inc.
-   This file is part of the GNU C Library.
+/* timeb.h -- An implementation of the standard Unix <sys/timeb.h> file.
+   Written by Ian Lance Taylor <ian@cygnus.com>
+   Public domain; no rights reserved.
 
-   The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Lesser General Public
-   License as published by the Free Software Foundation; either
-   version 2.1 of the License, or (at your option) any later version.
-
-   The GNU C Library is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Lesser General Public License for more details.
-
-   You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, see
-   <https://www.gnu.org/licenses/>.  */
+   <sys/timeb.h> declares the structure used by the ftime function, as
+   well as the ftime function itself.  Newlib does not provide an
+   implementation of ftime.  */
 
 #ifndef _SYS_TIMEB_H
-#define _SYS_TIMEB_H	1
 
-#include <features.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-__BEGIN_DECLS
+#define _SYS_TIMEB_H
 
-# include <bits/types/struct_timeb.h>
+#include <_ansi.h>
+#include <sys/_types.h>
 
-/* Fill in TIMEBUF with information about the current time.  */
+#if !defined(__time_t_defined) && !defined(_TIME_T_DECLARED)
+typedef	_TIME_T_	time_t;
+#define	__time_t_defined
+#define	_TIME_T_DECLARED
+#endif
 
-extern int ftime (struct timeb *__timebuf)
-  __nonnull ((1))
-  __attribute_deprecated_msg__ ("Use gettimeofday or clock_gettime instead");
+struct timeb
+{
+  time_t time;
+  unsigned short millitm;
+  short timezone;
+  short dstflag;
+};
 
-__END_DECLS
+extern int ftime (struct timeb *);
 
-#endif	/* sys/timeb.h */
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* ! defined (_SYS_TIMEB_H) */

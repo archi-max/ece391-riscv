@@ -1,86 +1,79 @@
-/* Functions to access FILE structure internals.
-   Copyright (C) 2000-2024 Free Software Foundation, Inc.
-   This file is part of the GNU C Library.
+/*
+ * stdio_ext.h
+ *
+ * Definitions for I/O internal operations, originally from Solaris.
+ */
 
-   The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Lesser General Public
-   License as published by the Free Software Foundation; either
-   version 2.1 of the License, or (at your option) any later version.
+#ifndef _STDIO_EXT_H_
+#define _STDIO_EXT_H_
 
-   The GNU C Library is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Lesser General Public License for more details.
-
-   You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, see
-   <https://www.gnu.org/licenses/>.  */
-
-/* This header contains the same definitions as the header of the same name
-   on Sun's Solaris OS.  */
-
-#ifndef _STDIO_EXT_H
-#define _STDIO_EXT_H	1
+#ifdef __rtems__
+#error "<stdio_ext.h> not supported"
+#endif
 
 #include <stdio.h>
 
-enum
-{
-  /* Query current state of the locking status.  */
-  FSETLOCKING_QUERY = 0,
-#define FSETLOCKING_QUERY	FSETLOCKING_QUERY
-  /* The library protects all uses of the stream functions, except for
-     uses of the *_unlocked functions, by calls equivalent to flockfile().  */
-  FSETLOCKING_INTERNAL,
-#define FSETLOCKING_INTERNAL	FSETLOCKING_INTERNAL
-  /* The user will take care of locking.  */
-  FSETLOCKING_BYCALLER
-#define FSETLOCKING_BYCALLER	FSETLOCKING_BYCALLER
-};
+#define	FSETLOCKING_QUERY	0
+#define	FSETLOCKING_INTERNAL	1
+#define	FSETLOCKING_BYCALLER	2
 
+_BEGIN_STD_C
 
-__BEGIN_DECLS
+void	 __fpurge (FILE *);
+int	 __fsetlocking (FILE *, int);
 
-/* Return the size of the buffer of FP in bytes currently in use by
-   the given stream.  */
-extern size_t __fbufsize (FILE *__fp) __THROW;
+/* TODO:
 
+   void _flushlbf (void);
+*/
 
-/* Return non-zero value iff the stream FP is opened readonly, or if the
-   last operation on the stream was a read operation.  */
-extern int __freading (FILE *__fp) __THROW;
+#ifdef  __GNUC__
 
-/* Return non-zero value iff the stream FP is opened write-only or
-   append-only, or if the last operation on the stream was a write
-   operation.  */
-extern int __fwriting (FILE *__fp) __THROW;
+_ELIDABLE_INLINE size_t
+__fbufsize (FILE *__fp) { return (size_t) __fp->_bf._size; }
 
+_ELIDABLE_INLINE int
+__freading (FILE *__fp) { return (__fp->_flags & __SRD) != 0; }
 
-/* Return non-zero value iff stream FP is not opened write-only or
-   append-only.  */
-extern int __freadable (FILE *__fp) __THROW;
+_ELIDABLE_INLINE int
+__fwriting (FILE *__fp) { return (__fp->_flags & __SWR) != 0; }
 
-/* Return non-zero value iff stream FP is not opened read-only.  */
-extern int __fwritable (FILE *__fp) __THROW;
+_ELIDABLE_INLINE int
+__freadable (FILE *__fp) { return (__fp->_flags & (__SRD | __SRW)) != 0; }
 
+_ELIDABLE_INLINE int
+__fwritable (FILE *__fp) { return (__fp->_flags & (__SWR | __SRW)) != 0; }
 
-/* Return non-zero value iff the stream FP is line-buffered.  */
-extern int __flbf (FILE *__fp) __THROW;
+_ELIDABLE_INLINE int
+__flbf (FILE *__fp) { return (__fp->_flags & __SLBF) != 0; }
 
+_ELIDABLE_INLINE size_t
+__fpending (FILE *__fp) { return __fp->_p - __fp->_bf._base; }
 
-/* Discard all pending buffered I/O on the stream FP.  */
-extern void __fpurge (FILE *__fp) __THROW;
+#else
 
-/* Return amount of output in bytes pending on a stream FP.  */
-extern size_t __fpending (FILE *__fp) __THROW;
+size_t	 __fbufsize (FILE *);
+int	 __freading (FILE *);
+int	 __fwriting (FILE *);
+int	 __freadable (FILE *);
+int	 __fwritable (FILE *);
+int	 __flbf (FILE *);
+size_t	 __fpending (FILE *);
 
-/* Flush all line-buffered files.  */
-extern void _flushlbf (void);
+#ifndef __cplusplus
 
+#define __fbufsize(__fp) ((size_t) (__fp)->_bf._size)
+#define __freading(__fp) (((__fp)->_flags & __SRD) != 0)
+#define __fwriting(__fp) (((__fp)->_flags & __SWR) != 0)
+#define __freadable(__fp) (((__fp)->_flags & (__SRD | __SRW)) != 0)
+#define __fwritable(__fp) (((__fp)->_flags & (__SWR | __SRW)) != 0)
+#define __flbf(__fp) (((__fp)->_flags & __SLBF) != 0)
+#define __fpending(__fp) ((size_t) ((__fp)->_p - (__fp)->_bf._base))
 
-/* Set locking status of stream FP to TYPE.  */
-extern int __fsetlocking (FILE *__fp, int __type) __THROW;
+#endif /* __cplusplus */
 
-__END_DECLS
+#endif /* __GNUC__ */
 
-#endif	/* stdio_ext.h */
+_END_STD_C
+
+#endif /* _STDIO_EXT_H_ */
