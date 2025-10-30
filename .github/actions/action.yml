@@ -77,8 +77,9 @@ runs:
         [ -d "${ROOT}/compat/include" ] && HDRS="${HDRS}:${ROOT}/compat/include"
         echo "CPATH=${HDRS}${CPATH:+:$CPATH}" >> "$GITHUB_ENV"
         echo "C_INCLUDE_PATH=${HDRS}${C_INCLUDE_PATH:+:$C_INCLUDE_PATH}" >> "$GITHUB_ENV"
-    
+
     - name: Disable bundled headers for the rest of the job
+      shell: bash
       run: |
         echo "CPATH=" >> "$GITHUB_ENV"
-        echo "C_INCLUDE_PATH=" >> "$GITHUB_ENV"
+        echo "C_INCLUDE_PATH=" >> "$GITHUB_ENV" 
